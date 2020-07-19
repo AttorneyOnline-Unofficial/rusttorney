@@ -152,6 +152,21 @@ impl Decoder for AOMessageCodec {
 
         Ok(Some(ClientCommand::from_protocol(cmd, args_iter)?))
     }
+
+    fn decode_eof(
+        &mut self,
+        buf: &mut BytesMut,
+    ) -> Result<Option<Self::Item>, Self::Error> {
+        match self.decode(buf)? {
+            Some(frame) => Ok(Some(frame)),
+            None => {
+                if !buf.is_empty() {
+                    log::debug!("Ignoring remaining data: {:?}", buf.as_ref());
+                }
+                Ok(None)
+            }
+        }
+    }
 }
 
 fn ignore_ill_utf8(v: &[u8]) -> String {
