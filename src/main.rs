@@ -35,9 +35,8 @@ async fn main() -> anyhow::Result<()> {
     //     master_server.connection_loop().await.expect("MS connection loop panicked!");
     // });
 
-    let pg_config = PgConfig::from_str(
-        "postgresql://postgres@localhost:5432/rusttorney",
-    )?;
+    let pg_config =
+        PgConfig::from_str("postgresql://postgres@localhost:5432/rusttorney")?;
     let pg_mgr =
         PostgresConnectionManager::new(pg_config, tokio_postgres::NoTls);
     let pool = Pool::builder().build(pg_mgr).await?;
