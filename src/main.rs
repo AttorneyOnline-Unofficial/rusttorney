@@ -36,7 +36,7 @@ async fn main() -> anyhow::Result<()> {
     // });
 
     let pg_config = PgConfig::from_str(
-        "postgresql://vetro:27zaroda@localhost:5432/rusttorney",
+        "postgresql://postgres@localhost:5432/rusttorney",
     )?;
     let pg_mgr =
         PostgresConnectionManager::new(pg_config, tokio_postgres::NoTls);
