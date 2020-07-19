@@ -1,10 +1,17 @@
 use crate::{config::Config, networking::Command};
 use bytes::{Buf, BufMut, BytesMut};
 use futures::stream::SplitSink;
+use futures::task::SpawnExt;
 use futures::SinkExt;
+use sqlx::executor::RefExecutor;
+use sqlx::pool::PoolConnection;
+use sqlx::prelude::SqliteQueryAs;
+use sqlx::{Connect, Connection, Pool, SqliteConnection, SqlitePool};
+use std::path::Path;
 use std::{
     borrow::Cow,
     char::REPLACEMENT_CHARACTER,
+    env,
     fmt::{Debug, Display},
     str::FromStr,
 };
@@ -17,9 +24,8 @@ const MAGIC_END: u8 = b'%';
 #[rustfmt::skip]
 #[derive(Debug)]
 pub enum ClientCommand {
-    Handshake(String),                  // HI#<hdid:String>#%
-    ClientVersion(u32, String, String), /* ID#<pv:u32>#<software:String>#
-                                         * <version:String>#% */
+    Handshake(String),                           // HI#<hdid:String>#%
+    ClientVersion(u32, String, String),          // ID#<pv:u32>#<software:String>#<version:String>#%
     KeepAlive,                                   // CH
     AskListLengths,                              // askchaa
     AskListCharacters,                           // askchar
@@ -29,25 +35,18 @@ pub enum ClientCommand {
     AO2CharacterList,                            // AC#%
     AO2MusicList,                                // AM#%
     AO2Ready,                                    // RD#%
-    SelectCharacter(u32, u32, String),           /* CC<client_id:u32>#
-                                                  * <char_id:u32#<hdid:
-                                                  * String>#% */
+    SelectCharacter(u32, u32, String),           // CC<client_id:u32>#<char_id:u32#<hdid:String>#%
     ICMessage,                                   // MS
-    OOCMessage(String, String),                  /* CT#<name:String>#
-                                                  * <message:String>#% */
-    PlaySong(u32, u32),  // MC#<song_name:u32>#<???:u32>#%
-    WTCEButtons(String), // RT#<type:String>#%
-    SetCasePreferences(String, CasePreferences), /* SETCASE#<cases:String>#<will_cm:boolean>#<will_def:boolean>#<will_pro:boolean>#<will_judge:boolean>#<will_jury:boolean>#<will_steno:boolean>#% */
+    OOCMessage(String, String),                  // CT#<name:String>#<message:String>#%
+    PlaySong(u32, u32),                          // MC#<song_name:u32>#<???:u32>#%
+    WTCEButtons(String),                         // RT#<type:String>#%
+    SetCasePreferences(String, CasePreferences), // SETCASE#<cases:String>#<will_cm:boolean>#<will_def:boolean>#<will_pro:boolean>#<will_judge:boolean>#<will_jury:boolean>#<will_steno:boolean>#%
     CaseAnnounce(String, CasePreferences),       // CASEA
-    Penalties(u32, u32),                         /* HP#<type:u32>#
-                                                  * <new_value:u32>#% */
-    AddEvidence(EvidenceArgs), /* PE#<name:String>#<description:String>#
-                                * <image:String>#% */
-    DeleteEvidence(u32),             // DE#<id:u32>#%
-    EditEvidence(u32, EvidenceArgs), /* EE#<id:u32>#<name:String>#
-                                      * <description:String>#<image:
-                                      * String>#% */
-    CallModButton(Option<String>), // ZZ?#<reason:String>?#%
+    Penalties(u32, u32),                         // HP#<type:u32>#<new_value:u32>#%
+    AddEvidence(EvidenceArgs),                   // PE#<name:String>#<description:String>#<image:String>#%
+    DeleteEvidence(u32),                         // DE#<id:u32>#%
+    EditEvidence(u32, EvidenceArgs),             // EE#<id:u32>#<name:String>#<description:String>#<image:String>#%
+    CallModButton(Option<String>),               // ZZ?#<reason:String>?#%
 }
 
 #[rustfmt::skip]
@@ -103,19 +102,16 @@ impl Command for ClientCommand {
                 .and_then(std::convert::identity)
         }
 
-        match name.as_str() {
-            "HI" => {
-                let res = Ok(Self::Handshake(next(&mut args, on_err)?));
-                if args.next().is_some() {
-                    return Err(on_err());
-                }
-                res
-            }
+        let res = match name.as_str() {
+            "HI" => Ok(Self::Handshake(next(&mut args, on_err)?)),
             _ => Err(on_err()),
-        }
-    }
-    fn handle(&self) -> futures::future::BoxFuture<'static, ()> {
-        todo!()
+        };
+
+        if args.next().is_some() {
+            return Err(on_err());
+        };
+
+        res
     }
 }
 
@@ -194,8 +190,9 @@ fn ignore_ill_utf8(v: &[u8]) -> String {
     }
 }
 
-pub struct AOServer<'a> {
-    config: Config<'a>,
+pub struct AOServer<'a, C: Connect> {
+    config: &'a Config<'a>,
+    db_pool: Pool<C>,
 }
 
 pub struct AO2MessageHandler {
@@ -271,13 +268,55 @@ impl Encoder<ServerCommand> for AOMessageCodec {
     }
 }
 
-impl<'a> AOServer<'a> {
-    pub fn new(config: Config<'a>) -> anyhow::Result<Self> {
-        Ok(Self { config })
+impl<'a, C> AOServer<'a, C>
+where
+    C: Connect,
+{
+    pub fn new(
+        config: &'a Config<'a>,
+        db_pool: Pool<C>,
+    ) -> anyhow::Result<Self> {
+        Ok(Self { config, db_pool })
     }
 
-    pub async fn run(&self) -> anyhow::Result<()> {
+    async fn migrate(&mut self) -> anyhow::Result<()> {
+        log::info!("Migrating database...");
+        let mut conn = self.db_pool.acquire().await?;
+        sqlx::query("PRAGMA foreign_keys = ON").execute(&mut conn).await?;
+
+        if !Path::new(
+            &env::var("DATABASE_URL")
+                .unwrap_or("sqlite:storage/db.sqlite3".into()),
+        )
+        .exists()
+        {
+            let v1_migration = std::fs::read_to_string("migrations/v1.sql")?;
+            sqlx::query(&v1_migration).execute(&mut conn).await?;
+        }
+
+        for version in 2..=3 {
+            self.migrate_to_version(version, &mut conn).await?;
+        }
+        Ok(())
+    }
+
+    async fn migrate_to_version<'e, E>(
+        &mut self,
+        version: u8,
+        conn: E,
+    ) -> anyhow::Result<()>
+    where
+        E: RefExecutor<'e, Database = C::Database>,
+    {
+        log::debug!("Migrating to v{}", version);
+        let current_version: u8 =
+            sqlx::query_as("PRAGMA user_version").fetch_one(&mut *conn).await?;
+    }
+
+    pub async fn run(&mut self) -> anyhow::Result<()> {
         use futures::StreamExt;
+
+        self.migrate().await?;
 
         log::info!("Starting up the server...");
         let addr = format!("127.0.0.1:{}", self.config.general.port);
