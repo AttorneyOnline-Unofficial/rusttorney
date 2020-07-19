@@ -161,7 +161,8 @@ impl Decoder for AOMessageCodec {
             Some(frame) => Ok(Some(frame)),
             None => {
                 if !buf.is_empty() {
-                    log::debug!("Ignoring remaining data: {:?}", buf.as_ref());
+                    log::debug!("Ignoring remaining data");
+                    log::trace!("Ignored data: {:?}", buf.as_ref());
                 }
                 Ok(None)
             }
