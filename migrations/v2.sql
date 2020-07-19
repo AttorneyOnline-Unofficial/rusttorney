@@ -10,6 +10,4 @@ INSERT INTO hdids_new SELECT * FROM hdids;
 DROP TABLE hdids CASCADE;
 ALTER TABLE hdids_new RENAME TO hdids;
 
-VACUUM;
-
 UPDATE general_info SET db_version = 2;

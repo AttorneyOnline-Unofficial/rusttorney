@@ -1,11 +1,14 @@
 #![allow(unused)]
+use bb8::Pool;
+use bb8_postgres::PostgresConnectionManager;
 use env_logger::Env;
 use log::LevelFilter;
 use rusttorney::master_server_client::MasterServerClient;
 use rusttorney::{config::Config, server::AOServer};
-use sqlx::SqlitePool;
 use std::env;
 use std::path::PathBuf;
+use std::str::FromStr;
+use tokio_postgres::Config as PgConfig;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -32,7 +35,12 @@ async fn main() -> anyhow::Result<()> {
     //     master_server.connection_loop().await.expect("MS connection loop panicked!");
     // });
 
-    let manager = bb8_postgres::PostgresConnectionManager::new()
+    let pg_config = PgConfig::from_str(
+        "postgresql://vetro:27zaroda@localhost:5432/rusttorney",
+    )?;
+    let pg_mgr =
+        PostgresConnectionManager::new(pg_config, tokio_postgres::NoTls);
+    let pool = Pool::builder().build(pg_mgr).await?;
 
     AOServer::new(&config, pool)?.run().await
 }

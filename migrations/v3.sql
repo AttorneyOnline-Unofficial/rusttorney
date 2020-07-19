@@ -9,6 +9,4 @@ INSERT INTO hdid_bans_new SELECT * FROM hdid_bans;
 DROP TABLE hdid_bans CASCADE;
 ALTER TABLE hdid_bans_new RENAME TO hdid_bans;
 
-VACUUM;
-
 UPDATE general_info SET db_version = 3;

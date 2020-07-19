@@ -1,21 +1,17 @@
 use crate::{config::Config, networking::Command};
+use bb8::Pool;
+use bb8_postgres::PostgresConnectionManager;
 use bytes::{Buf, BufMut, BytesMut};
 use futures::stream::SplitSink;
-use futures::task::SpawnExt;
 use futures::SinkExt;
-use sqlx::executor::RefExecutor;
-use sqlx::pool::PoolConnection;
-use sqlx::prelude::SqliteQueryAs;
-use sqlx::{Connect, Connection, Pool, SqliteConnection, SqlitePool};
-use std::path::Path;
 use std::{
     borrow::Cow,
     char::REPLACEMENT_CHARACTER,
-    env,
     fmt::{Debug, Display},
     str::FromStr,
 };
 use tokio::net::{TcpListener, TcpStream};
+use tokio_postgres::NoTls;
 use tokio_util::codec::{Decoder, Encoder, Framed};
 
 const MAGIC_SEPARATOR: u8 = b'#';
@@ -190,20 +186,22 @@ fn ignore_ill_utf8(v: &[u8]) -> String {
     }
 }
 
-pub struct AOServer<'a, C: Connect> {
+pub struct AOServer<'a> {
     config: &'a Config<'a>,
-    db_pool: Pool<C>,
+    db_pool: Pool<PostgresConnectionManager<NoTls>>,
 }
 
 pub struct AO2MessageHandler {
     socket: SplitSink<Framed<TcpStream, AOMessageCodec>, ServerCommand>,
+    db_pool: Pool<PostgresConnectionManager<NoTls>>,
 }
 
 impl AO2MessageHandler {
     pub fn new(
         socket: SplitSink<Framed<TcpStream, AOMessageCodec>, ServerCommand>,
+        db_pool: Pool<PostgresConnectionManager<NoTls>>,
     ) -> Self {
-        Self { socket }
+        Self { socket, db_pool }
     }
 
     pub async fn handle(
@@ -212,6 +210,8 @@ impl AO2MessageHandler {
     ) -> Result<(), anyhow::Error> {
         match command {
             ClientCommand::Handshake(hdid) => {
+                let conn = self.db_pool.get().await?;
+                drop(conn);
                 log::debug!("Handshake from HDID: {}", hdid);
                 self.handle_handshake(hdid).await
             }
@@ -268,33 +268,49 @@ impl Encoder<ServerCommand> for AOMessageCodec {
     }
 }
 
-impl<'a> AOServer<'a>
-{
+impl<'a> AOServer<'a> {
     pub fn new(
         config: &'a Config<'a>,
-        db_pool: Pool<C>,
+        db_pool: Pool<PostgresConnectionManager<NoTls>>,
     ) -> anyhow::Result<Self> {
         Ok(Self { config, db_pool })
     }
 
     async fn migrate(&mut self) -> anyhow::Result<()> {
-        log::info!("Migrating database...");
-        let mut conn = self.db_pool.acquire().await?;
-        sqlx::query("PRAGMA foreign_keys = ON").execute(&mut conn).await?;
+        let mut conn = self.db_pool.get().await?;
+        let stmt = conn.prepare("SELECT db_version FROM general_info").await;
 
-        if !Path::new(
-            &env::var("DATABASE_URL")
-                .unwrap_or("sqlite:storage/db.sqlite3".into()),
-        )
-        .exists()
-        {
-            let v1_migration = std::fs::read_to_string("migrations/v1.sql")?;
-            sqlx::query(&v1_migration).execute(&mut conn).await?;
-        }
+        let current_version = match stmt {
+            Err(_) => {
+                log::info!("Migrating database...");
+                let mut migrations = std::fs::read_dir("migrations")?
+                    .map(|res| res.map(|e| e.path()))
+                    .collect::<Result<Vec<_>, std::io::Error>>()?;
 
-        for version in 2..=3 {
-            self.migrate_to_version(version, &mut conn).await?;
-        }
+                migrations.sort();
+
+                for migration in migrations {
+                    log::debug!("Executing migration: {:?}", &migration);
+                    let migration_stmt = std::fs::read_to_string(migration)?;
+                    let tx = conn.transaction().await?;
+                    tx.batch_execute(&migration_stmt).await?;
+                    tx.commit().await?;
+                }
+                log::info!("Succesfully migrated!");
+                log::debug!("GCing the DB...");
+                conn.query("VACUUM", &[]).await?;
+
+                let row = conn
+                    .query_one("SELECT db_version FROM general_info", &[])
+                    .await?;
+                row.get::<_, i32>(0_usize)
+            }
+            Ok(stmt) => {
+                let row = conn.query_one(&stmt, &[]).await?;
+                row.get::<_, i32>(0_usize)
+            }
+        };
+        log::info!("Current DB version is: v{}", current_version);
         Ok(())
     }
 
@@ -310,13 +326,14 @@ impl<'a> AOServer<'a>
         let mut listener = TcpListener::bind(addr).await?;
 
         loop {
+            let db_pool = self.db_pool.clone();
             let (socket, c) = listener.accept().await?;
             log::debug!("got incoming connection from: {:?}", &c);
 
             tokio::spawn(async move {
                 let (msg_sink, mut msg_stream) =
                     AOMessageCodec.framed(socket).split();
-                let mut handler = AO2MessageHandler::new(msg_sink);
+                let mut handler = AO2MessageHandler::new(msg_sink, db_pool);
 
                 while let Some(msg_res) = msg_stream.next().await {
                     match msg_res {
