@@ -268,9 +268,7 @@ impl Encoder<ServerCommand> for AOMessageCodec {
     }
 }
 
-impl<'a, C> AOServer<'a, C>
-where
-    C: Connect,
+impl<'a> AOServer<'a>
 {
     pub fn new(
         config: &'a Config<'a>,
@@ -298,19 +296,6 @@ where
             self.migrate_to_version(version, &mut conn).await?;
         }
         Ok(())
-    }
-
-    async fn migrate_to_version<'e, E>(
-        &mut self,
-        version: u8,
-        conn: E,
-    ) -> anyhow::Result<()>
-    where
-        E: RefExecutor<'e, Database = C::Database>,
-    {
-        log::debug!("Migrating to v{}", version);
-        let current_version: u8 =
-            sqlx::query_as("PRAGMA user_version").fetch_one(&mut *conn).await?;
     }
 
     pub async fn run(&mut self) -> anyhow::Result<()> {

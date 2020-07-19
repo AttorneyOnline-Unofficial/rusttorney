@@ -32,9 +32,7 @@ async fn main() -> anyhow::Result<()> {
     //     master_server.connection_loop().await.expect("MS connection loop panicked!");
     // });
 
-    let mut pool = SqlitePool::new(
-        &env::var("DATABASE_URL").unwrap_or("sqlite:storage/db.sqlite3".into()),
-    )
-    .await?;
+    let manager = bb8_postgres::PostgresConnectionManager::new()
+
     AOServer::new(&config, pool)?.run().await
 }
