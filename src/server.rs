@@ -1,7 +1,7 @@
 use crate::config::Config;
 
 use futures::stream::SplitSink;
-use futures::SinkExt;
+use futures::{SinkExt, StreamExt};
 
 use crate::networking::aocommands::{ClientCommand, ServerCommand};
 use crate::networking::codec::AOMessageCodec;
@@ -140,6 +140,8 @@ impl<'a> AOServer<'a> {
                         Err(err) => log::error!("Got error! {:?}", err),
                     }
                 }
+
+                log::debug!("{:?} - Disconnected!", &c);
             });
         }
     }

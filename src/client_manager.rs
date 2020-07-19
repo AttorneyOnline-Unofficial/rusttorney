@@ -48,7 +48,6 @@ impl ClientManager {
             ServerCommand,
         >,
     ) -> Result<(), anyhow::Error> {
-        log::trace!("Cur id: {:?}", &self.cur_id);
         let user_id = match self.cur_id.pop() {
             Some(uid) => uid,
             None => {
