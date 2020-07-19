@@ -176,8 +176,7 @@ mod tests {
     fn parse_handshake() {
         let mut input = b"HI#hdid#%"[..].into();
         let expected = ClientCommand::Handshake("hdid".into());
-        let actual =
-            AOMessageCodec.decode(&mut input).unwrap().unwrap();
+        let actual = AOMessageCodec.decode(&mut input).unwrap().unwrap();
         assert_eq!(actual, expected);
     }
 
