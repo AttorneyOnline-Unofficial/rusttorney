@@ -42,5 +42,5 @@ async fn main() -> anyhow::Result<()> {
         PostgresConnectionManager::new(pg_config, tokio_postgres::NoTls);
     let db = DbWrapper::new(Pool::builder().build(pg_mgr).await?);
 
-    AOServer::new(&config, db)?.run().await
+    AOServer::new(config, db)?.run().await
 }

@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Config<'a> {
     pub debug: bool,
     pub timeout: u32,
@@ -15,7 +15,7 @@ pub struct Config<'a> {
     pub music_change_floodguard: FloodGuardConfig,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct GeneralConfig<'a> {
     pub hostname: &'a str,
     pub playerlimit: u8,
@@ -26,7 +26,7 @@ pub struct GeneralConfig<'a> {
     pub websocket_port: Option<u32>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct MasterServerConfig<'a> {
     #[serde(rename = "use")]
     pub use_masterserver: bool,
@@ -36,7 +36,7 @@ pub struct MasterServerConfig<'a> {
     pub description: &'a str,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct FloodGuardConfig {
     pub times_per_interval: u8,
     pub interval_length: u8,

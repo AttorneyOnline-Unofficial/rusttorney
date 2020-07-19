@@ -8,25 +8,31 @@ use crate::networking::codec::AOMessageCodec;
 use crate::networking::database::DbWrapper;
 use tokio::net::{TcpListener, TcpStream};
 
+use crate::client_manager::ClientManager;
+use futures::lock::Mutex;
+use std::sync::Arc;
 use tokio_util::codec::{Decoder, Framed};
 
 pub struct AOServer<'a> {
-    config: &'a Config<'a>,
+    config: Config<'a>,
     db: DbWrapper,
+    client_manager: Arc<Mutex<ClientManager>>,
 }
 
 pub struct AO2MessageHandler {
     socket: SplitSink<Framed<TcpStream, AOMessageCodec>, ServerCommand>,
     #[allow(unused)]
     db: DbWrapper,
+    client_manager: Arc<Mutex<ClientManager>>,
 }
 
 impl AO2MessageHandler {
     pub fn new(
         socket: SplitSink<Framed<TcpStream, AOMessageCodec>, ServerCommand>,
         db: DbWrapper,
+        client_manager: Arc<Mutex<ClientManager>>,
     ) -> Self {
-        Self { socket, db }
+        Self { socket, db, client_manager }
     }
 
     pub async fn handle(
@@ -46,15 +52,22 @@ impl AO2MessageHandler {
         &mut self,
         _hdid: String,
     ) -> Result<(), anyhow::Error> {
-        self.socket.send(ServerCommand::Handshake(1111.to_string())).await?;
+        self.client_manager.lock().await.new_client(&mut self.socket).await?;
 
         Ok(())
     }
 }
 
 impl<'a> AOServer<'a> {
-    pub fn new(config: &'a Config<'a>, db: DbWrapper) -> anyhow::Result<Self> {
-        Ok(Self { config, db })
+    pub fn new(config: Config<'a>, db: DbWrapper) -> anyhow::Result<Self> {
+        let playerlimit = config.general.playerlimit;
+        Ok(Self {
+            config,
+            db,
+            client_manager: Arc::new(Mutex::new(ClientManager::new(
+                playerlimit,
+            ))),
+        })
     }
 
     async fn migrate(&mut self) -> anyhow::Result<()> {
@@ -108,13 +121,15 @@ impl<'a> AOServer<'a> {
 
         loop {
             let db = self.db.clone();
+            let client_manager = self.client_manager.clone();
             let (socket, c) = listener.accept().await?;
             log::debug!("got incoming connection from: {:?}", &c);
 
             tokio::spawn(async move {
                 let (msg_sink, mut msg_stream) =
                     AOMessageCodec.framed(socket).split();
-                let mut handler = AO2MessageHandler::new(msg_sink, db);
+                let mut handler =
+                    AO2MessageHandler::new(msg_sink, db, client_manager);
 
                 while let Some(msg_res) = msg_stream.next().await {
                     match msg_res {
