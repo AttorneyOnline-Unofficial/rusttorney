@@ -9,6 +9,7 @@ use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
 use tokio_postgres::Config as PgConfig;
+use rusttorney::networking::database::DbWrapper;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -39,7 +40,7 @@ async fn main() -> anyhow::Result<()> {
         PgConfig::from_str("postgresql://postgres@localhost:5432/rusttorney")?;
     let pg_mgr =
         PostgresConnectionManager::new(pg_config, tokio_postgres::NoTls);
-    let pool = Pool::builder().build(pg_mgr).await?;
+    let db = DbWrapper::new(Pool::builder().build(pg_mgr).await?);
 
-    AOServer::new(&config, pool)?.run().await
+    AOServer::new(&config, db)?.run().await
 }

@@ -10,3 +10,4 @@ pub trait Command {
 pub mod aocommands;
 pub mod codec;
 pub mod master_server_client;
+pub mod database;
