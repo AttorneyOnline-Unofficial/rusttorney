@@ -3,13 +3,13 @@ use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use env_logger::Env;
 use log::LevelFilter;
+use rusttorney::networking::database::DbWrapper;
 use rusttorney::networking::master_server_client::MasterServerClient;
 use rusttorney::{config::Config, server::AOServer};
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
 use tokio_postgres::Config as PgConfig;
-use rusttorney::networking::database::DbWrapper;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

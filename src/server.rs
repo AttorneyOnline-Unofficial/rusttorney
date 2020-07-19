@@ -7,14 +7,14 @@ use futures::SinkExt;
 
 use crate::networking::aocommands::{ClientCommand, ServerCommand};
 use crate::networking::codec::AOMessageCodec;
+use crate::networking::database::DbWrapper;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_postgres::NoTls;
 use tokio_util::codec::{Decoder, Framed};
-use crate::networking::database::DbWrapper;
 
 pub struct AOServer<'a> {
     config: &'a Config<'a>,
-    db: DbWrapper
+    db: DbWrapper,
 }
 
 pub struct AO2MessageHandler {
@@ -54,10 +54,7 @@ impl AO2MessageHandler {
 }
 
 impl<'a> AOServer<'a> {
-    pub fn new(
-        config: &'a Config<'a>,
-        db: DbWrapper,
-    ) -> anyhow::Result<Self> {
+    pub fn new(config: &'a Config<'a>, db: DbWrapper) -> anyhow::Result<Self> {
         Ok(Self { config, db })
     }
 
