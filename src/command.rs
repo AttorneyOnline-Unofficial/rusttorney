@@ -139,7 +139,7 @@ impl Decoder for AOMessageCodec {
 
         // Find the end of command name in message
         let cmd_end =
-            msg.iter().position(|&c| c == ARG_SEP).unwrap_or(msg.len());
+            msg.iter().position(|&c| c == ARG_SEP).unwrap_or_else(|| msg.len());
         // Take the command name
         let cmd_raw = msg.split_to(cmd_end);
         let cmd = ignore_ill_utf8(&cmd_raw[..]);
@@ -174,19 +174,19 @@ mod tests {
 
     #[test]
     fn parse_handshake() {
-        let input = b"HI#hdid#%";
+        let mut input = b"HI#hdid#%"[..].into();
         let expected = ClientCommand::Handshake("hdid".into());
         let actual =
-            AOMessageCodec.decode(&mut input[..].into()).unwrap().unwrap();
+            AOMessageCodec.decode(&mut input).unwrap().unwrap();
         assert_eq!(actual, expected);
     }
 
     #[test]
     fn mismatched_number_of_args() {
-        let input1 = b"HI#%";
-        let input2 = b"HI#hdid#junk#%";
-        assert!(AOMessageCodec.decode(&mut input1[..].into()).is_err());
-        assert!(AOMessageCodec.decode(&mut input2[..].into()).is_err());
+        let mut input1 = b"HI#%"[..].into();
+        let mut input2 = b"HI#hdid#junk#%"[..].into();
+        assert!(AOMessageCodec.decode(&mut input1).is_err());
+        assert!(AOMessageCodec.decode(&mut input2).is_err());
     }
 
     #[test]
