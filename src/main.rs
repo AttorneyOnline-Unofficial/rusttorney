@@ -3,7 +3,7 @@ use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use env_logger::Env;
 use log::LevelFilter;
-use rusttorney::master_server_client::MasterServerClient;
+use rusttorney::networking::master_server_client::MasterServerClient;
 use rusttorney::{config::Config, server::AOServer};
 use std::env;
 use std::path::PathBuf;
