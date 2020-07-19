@@ -1,6 +1,6 @@
-use bb8::{ManageConnection, Pool, PooledConnection, RunError};
+use bb8::{Pool, PooledConnection, RunError};
 use bb8_postgres::PostgresConnectionManager;
-use tokio_postgres::{Client, Error, NoTls};
+use tokio_postgres::{Error, NoTls};
 
 pub struct DbWrapper {
     db_pool: Pool<PostgresConnectionManager<NoTls>>,

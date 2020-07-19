@@ -1,6 +1,4 @@
 use crate::config::Config;
-use bb8::{ManageConnection, Pool};
-use bb8_postgres::PostgresConnectionManager;
 
 use futures::stream::SplitSink;
 use futures::SinkExt;
@@ -9,7 +7,7 @@ use crate::networking::aocommands::{ClientCommand, ServerCommand};
 use crate::networking::codec::AOMessageCodec;
 use crate::networking::database::DbWrapper;
 use tokio::net::{TcpListener, TcpStream};
-use tokio_postgres::NoTls;
+
 use tokio_util::codec::{Decoder, Framed};
 
 pub struct AOServer<'a> {
@@ -19,6 +17,7 @@ pub struct AOServer<'a> {
 
 pub struct AO2MessageHandler {
     socket: SplitSink<Framed<TcpStream, AOMessageCodec>, ServerCommand>,
+    #[allow(unused)]
     db: DbWrapper,
 }
 
