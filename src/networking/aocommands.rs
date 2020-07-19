@@ -1,6 +1,6 @@
-use std::str::FromStr;
 use crate::networking::Command;
 use std::fmt::Display;
+use std::str::FromStr;
 
 #[rustfmt::skip]
 #[derive(Debug)]
@@ -89,10 +89,10 @@ impl Command for ClientCommand {
             mut args: impl Iterator<Item = String>,
             on_err: F,
         ) -> Result<T, anyhow::Error>
-            where
-                E: Display,
-                T: FromStr<Err = E>,
-                F: Fn() -> anyhow::Error,
+        where
+            E: Display,
+            T: FromStr<Err = E>,
+            F: Fn() -> anyhow::Error,
         {
             args.next()
                 .ok_or_else(on_err)

@@ -1,9 +1,9 @@
+use crate::networking::aocommands::{ClientCommand, ServerCommand};
 use crate::networking::Command;
-use bytes::{Buf, BytesMut, BufMut};
-use tokio_util::codec::{Decoder, Encoder};
+use bytes::{Buf, BufMut, BytesMut};
 use std::borrow::Cow;
 use std::char::REPLACEMENT_CHARACTER;
-use crate::networking::aocommands::{ClientCommand, ServerCommand};
+use tokio_util::codec::{Decoder, Encoder};
 
 const MAGIC_SEPARATOR: u8 = b'#';
 const MAGIC_END: u8 = b'%';

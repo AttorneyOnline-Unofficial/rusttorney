@@ -1,23 +1,18 @@
-use crate::{config::Config, networking::Command};
-use bb8::{Pool, ManageConnection};
+use crate::config::Config;
+use bb8::{ManageConnection, Pool};
 use bb8_postgres::PostgresConnectionManager;
-use bytes::{Buf, BufMut, BytesMut};
+
 use futures::stream::SplitSink;
 use futures::SinkExt;
-use std::{
-    borrow::Cow,
-    char::REPLACEMENT_CHARACTER,
-    fmt::{Debug, Display},
-    str::FromStr,
-};
+
+use crate::networking::aocommands::{ClientCommand, ServerCommand};
+use crate::networking::codec::AOMessageCodec;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_postgres::NoTls;
-use tokio_util::codec::{Decoder, Encoder, Framed};
-use crate::networking::codec::AOMessageCodec;
-use crate::networking::aocommands::{ServerCommand, ClientCommand};
+use tokio_util::codec::{Decoder, Framed};
 
 pub struct DbWrapper<C: ManageConnection> {
-    db_pool: Pool<C>
+    db_pool: Pool<C>,
 }
 
 pub struct AOServer<'a> {

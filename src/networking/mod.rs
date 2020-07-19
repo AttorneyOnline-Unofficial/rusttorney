@@ -7,6 +7,6 @@ pub trait Command {
         Self: Sized;
 }
 
-pub mod codec;
 pub mod aocommands;
+pub mod codec;
 pub mod master_server_client;
