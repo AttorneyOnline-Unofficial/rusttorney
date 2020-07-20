@@ -4,13 +4,13 @@ use crate::{command::AOMessageCodec, config::Config};
 use anyhow::Error;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
-use bytes::{BufMut, BytesMut};
+
 use futures::stream::SplitSink;
 use futures::SinkExt;
 use std::fmt::Debug;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_postgres::NoTls;
-use tokio_util::codec::{Decoder, Encoder, Framed};
+use tokio_util::codec::{Decoder, Framed};
 
 #[rustfmt::skip]
 #[derive(Debug)]
@@ -20,8 +20,8 @@ pub enum ServerCommand {
 
 impl Command for ServerCommand {
     fn from_protocol(
-        name: String,
-        args: impl Iterator<Item = String>,
+        _name: String,
+        _args: impl Iterator<Item = String>,
     ) -> Result<Self, Error>
     where
         Self: Sized,
