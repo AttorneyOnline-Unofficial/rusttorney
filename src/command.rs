@@ -243,6 +243,15 @@ mod tests {
     }
 
     #[test]
+    fn encode_handshake() {
+        let command = ServerCommand::Handshake("hdid".into());
+        let mut actual = BytesMut::new();
+        let expected = BytesMut::from(&b"HI#hdid#%"[..]);
+        AOMessageCodec.encode(command, &mut actual).unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
     fn mismatched_number_of_args() {
         let mut input1 = b"HI#%"[..].into();
         let mut input2 = b"HI#hdid#junk#%"[..].into();
