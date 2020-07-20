@@ -10,9 +10,9 @@ use tokio_util::codec::{Decoder, Encoder};
 #[rustfmt::skip]
 #[derive(Debug, PartialEq)]
 pub enum ClientCommand {
-    Handshake(String),                  // HI#<hdid:String>#%
-    ClientVersion(u32, String, String), /* ID#<pv:u32>#<software:String>#
-                                         * <version:String>#% */
+    Handshake(String),                           // HI#<hdid:String>#%
+    ClientVersion(u32, String, String),          /* ID#<pv:u32>#<software:String>#
+                                                  * <version:String>#% */
     KeepAlive,                                   // CH
     AskListLengths,                              // askchaa
     AskListCharacters,                           // askchar
@@ -28,19 +28,19 @@ pub enum ClientCommand {
     ICMessage,                                   // MS
     OOCMessage(String, String),                  /* CT#<name:String>#
                                                   * <message:String>#% */
-    PlaySong(u32, u32),  // MC#<song_name:u32>#<???:u32>#%
-    WTCEButtons(String), // RT#<type:String>#%
+    PlaySong(u32, u32),                          // MC#<song_name:u32>#<???:u32>#%
+    WTCEButtons(String),                         // RT#<type:String>#%
     SetCasePreferences(String, CasePreferences), /* SETCASE#<cases:String>#<will_cm:boolean>#<will_def:boolean>#<will_pro:boolean>#<will_judge:boolean>#<will_jury:boolean>#<will_steno:boolean>#% */
     CaseAnnounce(String, CasePreferences),       // CASEA
     Penalties(u32, u32),                         /* HP#<type:u32>#
                                                   * <new_value:u32>#% */
-    AddEvidence(EvidenceArgs), /* PE#<name:String>#<description:String>#
-                                * <image:String>#% */
-    DeleteEvidence(u32),             // DE#<id:u32>#%
-    EditEvidence(u32, EvidenceArgs), /* EE#<id:u32>#<name:String>#
-                                      * <description:String>#<image:
-                                      * String>#% */
-    CallModButton(Option<String>), // ZZ?#<reason:String>?#%
+    AddEvidence(EvidenceArgs),                   /* PE#<name:String>#<description:String>#
+                                                  * <image:String>#% */
+    DeleteEvidence(u32),                         // DE#<id:u32>#%
+    EditEvidence(u32, EvidenceArgs),             /* EE#<id:u32>#<name:String>#
+                                                  * <description:String>#<image:
+                                                  * String>#% */
+    CallModButton(Option<String>),               // ZZ?#<reason:String>?#%
 }
 
 impl Command for ClientCommand {

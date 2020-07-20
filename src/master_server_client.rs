@@ -94,11 +94,11 @@ impl Stream for TcpCommandReader {
 }
 
 #[derive(Debug)]
-pub struct MasterServerClient<
-    'a,
+pub struct MasterServerClient<'a, R, W>
+where
     R: CommandReader + Unpin,
     W: AsyncWrite + Unpin,
-> {
+{
     config: &'a Config<'a>,
     software: &'a str,
     reader: R,
@@ -111,8 +111,10 @@ enum MasterServerClientState {
     WaitPong,
 }
 
-impl<'a, R: CommandReader + Unpin, W: AsyncWrite + Unpin>
-    MasterServerClient<'a, R, W>
+impl<'a, R, W> MasterServerClient<'a, R, W>
+where
+    R: CommandReader + Unpin,
+    W: AsyncWrite + Unpin,
 {
     pub fn new(
         config: &'a Config<'a>,
