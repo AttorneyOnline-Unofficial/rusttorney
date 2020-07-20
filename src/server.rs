@@ -2,15 +2,15 @@ use crate::command::ClientCommand;
 use crate::networking::Command;
 use crate::{command::AOMessageCodec, config::Config};
 use anyhow::Error;
-use bb8::Pool;
-use bb8_postgres::PostgresConnectionManager;
+
+
 
 use crate::networking::database::DbWrapper;
 use futures::stream::SplitSink;
 use futures::SinkExt;
 use std::fmt::Debug;
 use tokio::net::{TcpListener, TcpStream};
-use tokio_postgres::NoTls;
+
 use tokio_util::codec::{Decoder, Framed};
 
 #[rustfmt::skip]
