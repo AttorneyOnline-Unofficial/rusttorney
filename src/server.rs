@@ -1,5 +1,7 @@
 use crate::command::ClientCommand;
+use crate::networking::Command;
 use crate::{command::AOMessageCodec, config::Config};
+use anyhow::Error;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use bytes::{BufMut, BytesMut};
@@ -16,21 +18,31 @@ pub enum ServerCommand {
     Handshake(String)
 }
 
-impl ServerCommand {
-    pub fn extract_args(&self) -> Option<Vec<&str>> {
-        use ServerCommand::*;
-
-        match self {
-            Handshake(str) => Some(vec![str]),
-            // _ => None,
-        }
+impl Command for ServerCommand {
+    fn from_protocol(
+        name: String,
+        args: impl Iterator<Item = String>,
+    ) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        Err(anyhow::anyhow!("Cannot be made from protocol! (Server response)"))
     }
 
-    pub fn ident(&self) -> &str {
+    fn ident(&self) -> &str {
         use ServerCommand::*;
 
         match self {
             Handshake(_) => "HI",
+        }
+    }
+
+    fn extract_args(&self) -> Vec<&str> {
+        use ServerCommand::*;
+
+        match self {
+            Handshake(str) => vec![str],
+            // _ => None,
         }
     }
 }
@@ -74,45 +86,6 @@ impl AO2MessageHandler {
     ) -> Result<(), anyhow::Error> {
         self.socket.send(ServerCommand::Handshake(1111.to_string())).await?;
 
-        Ok(())
-    }
-}
-
-impl Encoder<ServerCommand> for AOMessageCodec {
-    type Error = anyhow::Error;
-
-    fn encode(
-        &mut self,
-        item: ServerCommand,
-        dst: &mut BytesMut,
-    ) -> Result<(), Self::Error> {
-        let args_len = match item.extract_args() {
-            Some(args) => args.iter().fold(0, |i, s| i + s.len() + 1),
-            None => 0,
-        };
-        let ident = item.ident();
-        #[rustfmt::skip]
-        let reserve_len =
-            // 2 - 8
-            ident.len() +
-            // #
-            1 +
-            // args_len is every arg + #
-            args_len +
-            // %
-            1;
-        dst.reserve(reserve_len);
-        dst.put(ident.as_bytes());
-        dst.put_u8(b'#');
-
-        if let Some(args) = item.extract_args() {
-            for arg in args {
-                dst.put(arg.as_bytes());
-                dst.put_u8(b'#');
-            }
-        }
-
-        dst.put_u8(b'%');
         Ok(())
     }
 }

@@ -5,4 +5,8 @@ pub trait Command {
     ) -> Result<Self, anyhow::Error>
     where
         Self: Sized;
+
+    fn ident(&self) -> &str;
+
+    fn extract_args(&self) -> Vec<&str>;
 }
