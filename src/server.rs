@@ -5,6 +5,7 @@ use anyhow::Error;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 
+use crate::networking::database::DbWrapper;
 use futures::stream::SplitSink;
 use futures::SinkExt;
 use std::fmt::Debug;
@@ -49,20 +50,20 @@ impl Command for ServerCommand {
 
 pub struct AOServer<'a> {
     config: &'a Config<'a>,
-    db_pool: Pool<PostgresConnectionManager<NoTls>>,
+    db: DbWrapper,
 }
 
 pub struct AO2MessageHandler {
     socket: SplitSink<Framed<TcpStream, AOMessageCodec>, ServerCommand>,
-    db_pool: Pool<PostgresConnectionManager<NoTls>>,
+    db: DbWrapper,
 }
 
 impl AO2MessageHandler {
     pub fn new(
         socket: SplitSink<Framed<TcpStream, AOMessageCodec>, ServerCommand>,
-        db_pool: Pool<PostgresConnectionManager<NoTls>>,
+        db: DbWrapper,
     ) -> Self {
-        Self { socket, db_pool }
+        Self { socket, db }
     }
 
     pub async fn handle(
@@ -71,7 +72,7 @@ impl AO2MessageHandler {
     ) -> Result<(), anyhow::Error> {
         match command {
             ClientCommand::Handshake(hdid) => {
-                let conn = self.db_pool.get().await?;
+                let conn = self.db.get().await?;
                 drop(conn);
                 log::debug!("Handshake from HDID: {}", hdid);
                 self.handle_handshake(hdid).await
@@ -91,15 +92,12 @@ impl AO2MessageHandler {
 }
 
 impl<'a> AOServer<'a> {
-    pub fn new(
-        config: &'a Config<'a>,
-        db_pool: Pool<PostgresConnectionManager<NoTls>>,
-    ) -> anyhow::Result<Self> {
-        Ok(Self { config, db_pool })
+    pub fn new(config: &'a Config<'a>, db: DbWrapper) -> anyhow::Result<Self> {
+        Ok(Self { config, db })
     }
 
     async fn migrate(&mut self) -> anyhow::Result<()> {
-        let mut conn = self.db_pool.get().await?;
+        let mut conn = self.db.get().await?;
         let stmt = conn.prepare("SELECT db_version FROM general_info").await;
 
         let current_version = match stmt {
@@ -148,14 +146,14 @@ impl<'a> AOServer<'a> {
         let mut listener = TcpListener::bind(addr).await?;
 
         loop {
-            let db_pool = self.db_pool.clone();
+            let db = self.db.clone();
             let (socket, c) = listener.accept().await?;
             log::debug!("got incoming connection from: {:?}", &c);
 
             tokio::spawn(async move {
                 let (msg_sink, mut msg_stream) =
                     AOMessageCodec.framed(socket).split();
-                let mut handler = AO2MessageHandler::new(msg_sink, db_pool);
+                let mut handler = AO2MessageHandler::new(msg_sink, db);
 
                 while let Some(msg_res) = msg_stream.next().await {
                     match msg_res {

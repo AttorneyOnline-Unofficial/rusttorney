@@ -19,3 +19,5 @@ pub trait Command: Sized {
         res
     }
 }
+
+pub mod database;
