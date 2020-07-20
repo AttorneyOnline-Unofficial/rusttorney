@@ -1,12 +1,10 @@
 use crate::networking::Command;
-use bytes::{Buf, BytesMut};
-use std::borrow::Cow;
+
 use std::fmt::Display;
 use std::str::FromStr;
-use tokio_util::codec::Decoder;
 
 #[rustfmt::skip]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ClientCommand {
     Handshake(String),                           // HI#<hdid:String>#%
     ClientVersion(u32, String, String),          // ID#<pv:u32>#<software:String>#<version:String>#%
