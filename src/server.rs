@@ -1,16 +1,11 @@
 use crate::command::ClientCommand;
-use crate::{command::AOMessageCodec, config::Config, networking::Command};
+use crate::{command::AOMessageCodec, config::Config};
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
-use bytes::{Buf, BufMut, BytesMut};
+use bytes::{BufMut, BytesMut};
 use futures::stream::SplitSink;
 use futures::SinkExt;
-use std::{
-    borrow::Cow,
-    char::REPLACEMENT_CHARACTER,
-    fmt::{Debug, Display},
-    str::FromStr,
-};
+use std::fmt::Debug;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_postgres::NoTls;
 use tokio_util::codec::{Decoder, Encoder, Framed};
