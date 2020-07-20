@@ -99,9 +99,15 @@ impl<'a> AOServer<'a> {
     pub fn new(
         config: &'a Config<'a>,
         db_pool: Pool<PostgresConnectionManager<NoTls>>,
-        client_manager: Arc<Mutex<ClientManager>>,
     ) -> anyhow::Result<Self> {
-        Ok(Self { config, db_pool, client_manager })
+        let playerlimit = config.general.playerlimit;
+        Ok(Self {
+            config,
+            db_pool,
+            client_manager: Arc::new(Mutex::new(ClientManager::new(
+                playerlimit,
+            ))),
+        })
     }
 
     async fn migrate(&mut self) -> anyhow::Result<()> {
@@ -155,13 +161,15 @@ impl<'a> AOServer<'a> {
 
         loop {
             let db_pool = self.db_pool.clone();
+            let client_manager = self.client_manager.clone();
             let (socket, c) = listener.accept().await?;
             log::debug!("got incoming connection from: {:?}", &c);
 
             tokio::spawn(async move {
                 let (msg_sink, mut msg_stream) =
                     AOMessageCodec.framed(socket).split();
-                let mut handler = AO2MessageHandler::new(msg_sink, db_pool);
+                let mut handler =
+                    AO2MessageHandler::new(msg_sink, db_pool, client_manager);
 
                 while let Some(msg_res) = msg_stream.next().await {
                     match msg_res {
