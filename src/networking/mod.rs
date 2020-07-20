@@ -1,5 +1,3 @@
-use futures::future::BoxFuture;
-
 pub trait Command {
     fn from_protocol(
         name: String,
@@ -8,5 +6,7 @@ pub trait Command {
     where
         Self: Sized;
 
-    fn handle(&self) -> BoxFuture<'static, ()>;
+    fn ident(&self) -> &str;
+
+    fn extract_args(&self) -> Vec<&str>;
 }

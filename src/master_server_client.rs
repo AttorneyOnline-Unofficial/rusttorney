@@ -9,14 +9,14 @@ use tokio::net::TcpStream;
 use tokio::stream::{Stream, StreamExt};
 
 #[derive(Debug)]
-enum MasterServerCommand {
+pub enum MasterServerCommand {
     Check,
     Pong,
     NOSERV,
     Other(String),
 }
 
-trait CommandReader:
+pub trait CommandReader:
     Stream<Item = Result<MasterServerCommand, tokio::io::Error>>
 {
 }
@@ -25,7 +25,7 @@ impl<S: Stream<Item = Result<MasterServerCommand, tokio::io::Error>>>
 {
 }
 
-struct TcpCommandReader {
+pub struct TcpCommandReader {
     reader: ReadHalf<TcpStream>,
 }
 impl TcpCommandReader {
@@ -46,7 +46,11 @@ impl Stream for TcpCommandReader {
 }
 
 #[derive(Debug)]
-struct MasterServerClient<'a, R: CommandReader + Unpin, W: AsyncWrite + Unpin> {
+pub struct MasterServerClient<
+    'a,
+    R: CommandReader + Unpin,
+    W: AsyncWrite + Unpin,
+> {
     config: &'a Config<'a>,
     software: &'a str,
     reader: R,
@@ -94,6 +98,9 @@ impl<'a, R: CommandReader + Unpin, W: AsyncWrite + Unpin>
                     }
                 }
                 MasterServerCommand::NOSERV => {
+                    log::debug!(
+                        "MS does not have our server! Readvertising..."
+                    );
                     self.send_message(self.pack_server_info()).await?;
                 }
                 MasterServerCommand::Other(_mes) => { /* TODO: log this */ }
@@ -134,10 +141,10 @@ impl<'a> MasterServerClient<'a, TcpCommandReader, WriteHalf<TcpStream>> {
         MasterServerClient<'a, TcpCommandReader, WriteHalf<TcpStream>>,
         std::io::Error,
     > {
-        let stream = TcpStream::connect(SocketAddr::V4(SocketAddrV4::new(
-            Ipv4Addr::from(config.masterserver.ip.parse::<u32>().unwrap()),
-            config.masterserver.port,
-        )))
+        let stream = TcpStream::connect(format!(
+            "{}:{}",
+            config.masterserver.ip, config.masterserver.port
+        ))
         .await?;
         let (reader, writer) = tokio::io::split(stream);
         Ok(Self::new(config, software, TcpCommandReader::new(reader), writer))
