@@ -5,9 +5,11 @@ use anyhow::Error;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 
+use crate::client_manager::ClientManager;
 use futures::stream::SplitSink;
 use futures::SinkExt;
 use std::fmt::Debug;
+use std::sync::{Arc, Mutex};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_postgres::NoTls;
 use tokio_util::codec::{Decoder, Framed};
@@ -50,19 +52,22 @@ impl Command for ServerCommand {
 pub struct AOServer<'a> {
     config: &'a Config<'a>,
     db_pool: Pool<PostgresConnectionManager<NoTls>>,
+    client_manager: Arc<Mutex<ClientManager>>,
 }
 
 pub struct AO2MessageHandler {
     socket: SplitSink<Framed<TcpStream, AOMessageCodec>, ServerCommand>,
     db_pool: Pool<PostgresConnectionManager<NoTls>>,
+    client_manager: Arc<Mutex<ClientManager>>,
 }
 
 impl AO2MessageHandler {
     pub fn new(
         socket: SplitSink<Framed<TcpStream, AOMessageCodec>, ServerCommand>,
         db_pool: Pool<PostgresConnectionManager<NoTls>>,
+        client_manager: Arc<Mutex<ClientManager>>,
     ) -> Self {
-        Self { socket, db_pool }
+        Self { socket, db_pool, client_manager }
     }
 
     pub async fn handle(
@@ -94,8 +99,9 @@ impl<'a> AOServer<'a> {
     pub fn new(
         config: &'a Config<'a>,
         db_pool: Pool<PostgresConnectionManager<NoTls>>,
+        client_manager: Arc<Mutex<ClientManager>>,
     ) -> anyhow::Result<Self> {
-        Ok(Self { config, db_pool })
+        Ok(Self { config, db_pool, client_manager })
     }
 
     async fn migrate(&mut self) -> anyhow::Result<()> {
