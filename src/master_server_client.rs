@@ -1,5 +1,13 @@
 #![allow(unused)]
+use crate::command::{
+    assert_iterator_is_empty, next_arg, to_message, CommandReader,
+    TcpCommandReader,
+};
 use crate::config::Config;
+use crate::networking::Command;
+use anyhow::Error;
+use futures::future::BoxFuture;
+use serde::export::PhantomData;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::pin::Pin;
 use std::task::Context;
@@ -13,40 +21,44 @@ enum MasterServerCommand {
     Check,
     Pong,
     NOSERV,
-    Other(String),
 }
 
-trait CommandReader:
-    Stream<Item = Result<MasterServerCommand, tokio::io::Error>>
-{
-}
-impl<S: Stream<Item = Result<MasterServerCommand, tokio::io::Error>>>
-    CommandReader for S
-{
-}
+impl Command for MasterServerCommand {
+    fn from_protocol(
+        name: String,
+        mut args: impl Iterator<Item = String>,
+    ) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let on_err = || {
+            anyhow::anyhow!(
+                "Amount of arguments for command {} does not match!",
+                &name
+            )
+        };
+        let args = &mut args;
 
-struct TcpCommandReader {
-    reader: ReadHalf<TcpStream>,
-}
-impl TcpCommandReader {
-    pub fn new(reader: ReadHalf<TcpStream>) -> Self {
-        Self { reader }
+        let res = match name.as_str() {
+            "CHECK" => Ok(Self::Check),
+            "PONG" => Ok(Self::Pong),
+            "NOSERV" => Ok(Self::NOSERV),
+            _ => Err(on_err()),
+        }?;
+        assert_iterator_is_empty(args).map(|_| res)
     }
-}
 
-impl Stream for TcpCommandReader {
-    type Item = Result<MasterServerCommand, tokio::io::Error>;
-
-    fn poll_next(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Option<Self::Item>> {
+    fn handle(&self) -> BoxFuture<'static, ()> {
         unimplemented!()
     }
 }
 
 #[derive(Debug)]
-struct MasterServerClient<'a, R: CommandReader + Unpin, W: AsyncWrite + Unpin> {
+struct MasterServerClient<
+    'a,
+    R: CommandReader<MasterServerCommand> + Unpin,
+    W: AsyncWrite + Unpin,
+> {
     config: &'a Config<'a>,
     software: &'a str,
     reader: R,
@@ -59,8 +71,11 @@ enum MasterServerClientState {
     WaitPong,
 }
 
-impl<'a, R: CommandReader + Unpin, W: AsyncWrite + Unpin>
-    MasterServerClient<'a, R, W>
+impl<
+        'a,
+        R: CommandReader<MasterServerCommand> + Unpin,
+        W: AsyncWrite + Unpin,
+    > MasterServerClient<'a, R, W>
 {
     pub fn new(
         config: &'a Config<'a>,
@@ -71,7 +86,7 @@ impl<'a, R: CommandReader + Unpin, W: AsyncWrite + Unpin>
         MasterServerClient { config, software, reader, writer }
     }
 
-    pub async fn connection_loop(&mut self) -> Result<(), tokio::io::Error> {
+    pub async fn connection_loop(&mut self) -> Result<(), anyhow::Error> {
         let mut state = MasterServerClientState::WaitCommand;
         loop {
             let mes: MasterServerCommand =
@@ -80,15 +95,21 @@ impl<'a, R: CommandReader + Unpin, W: AsyncWrite + Unpin>
                         tokio::io::ErrorKind::UnexpectedEof,
                         "unexpected end",
                     )
-                })??; // TODO: enum for error
+                })??;
             match mes {
                 MasterServerCommand::Check => {
-                    self.send_message("PING#%").await?; // TODO: do this better
+                    self.send_message(to_message(
+                        "PING",
+                        std::iter::empty::<String>(),
+                    ))
+                    .await?;
                     state = MasterServerClientState::WaitPong;
                 }
                 MasterServerCommand::Pong => {
                     match state {
-                        MasterServerClientState::WaitPong => {}
+                        MasterServerClientState::WaitPong => {
+                            state = MasterServerClientState::WaitCommand;
+                        }
                         MasterServerClientState::WaitCommand => { /* TODO: log this */
                         }
                     }
@@ -96,7 +117,6 @@ impl<'a, R: CommandReader + Unpin, W: AsyncWrite + Unpin>
                 MasterServerCommand::NOSERV => {
                     self.send_message(self.pack_server_info()).await?;
                 }
-                MasterServerCommand::Other(_mes) => { /* TODO: log this */ }
             }
         }
     }
@@ -116,22 +136,35 @@ impl<'a, R: CommandReader + Unpin, W: AsyncWrite + Unpin>
             Some(wsport) => format!("{}&{}", cfg.masterserver.port, wsport),
             _ => format!("{}", cfg.masterserver.port),
         };
-        format!(
-            "SCC#{}#{}#{}#{}#%",
-            port,
-            cfg.masterserver.name,
-            cfg.masterserver.description,
-            self.software
-        ) // TODO: do this with parser struct
+        to_message(
+            "SCC",
+            [
+                port.as_str(),
+                cfg.masterserver.name,
+                cfg.masterserver.description,
+                self.software,
+            ]
+            .iter(),
+        )
     }
 }
 
-impl<'a> MasterServerClient<'a, TcpCommandReader, WriteHalf<TcpStream>> {
+impl<'a>
+    MasterServerClient<
+        'a,
+        TcpCommandReader<MasterServerCommand>,
+        WriteHalf<TcpStream>,
+    >
+{
     pub async fn from_config_with_connect(
         config: &'a Config<'a>,
         software: &'a str,
     ) -> Result<
-        MasterServerClient<'a, TcpCommandReader, WriteHalf<TcpStream>>,
+        MasterServerClient<
+            'a,
+            TcpCommandReader<MasterServerCommand>,
+            WriteHalf<TcpStream>,
+        >,
         std::io::Error,
     > {
         let stream = TcpStream::connect(SocketAddr::V4(SocketAddrV4::new(

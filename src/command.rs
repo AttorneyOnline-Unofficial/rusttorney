@@ -1,10 +1,16 @@
 use crate::networking::Command;
 use bytes::{Buf, BytesMut};
+use futures::task::{Context, Poll};
+use std::marker::PhantomData;
+use std::pin::Pin;
 use std::{
     borrow::Cow,
     fmt::{Debug, Display},
     str::FromStr,
 };
+use tokio::io::ReadHalf;
+use tokio::net::TcpStream;
+use tokio::stream::Stream;
 use tokio_util::codec::Decoder;
 
 #[rustfmt::skip]
@@ -55,31 +61,11 @@ impl Command for ClientCommand {
             )
         };
 
-        fn next<E, T, F>(
-            mut args: impl Iterator<Item = String>,
-            on_err: F,
-        ) -> Result<T, anyhow::Error>
-        where
-            E: Display,
-            T: FromStr<Err = E>,
-            F: Fn() -> anyhow::Error,
-        {
-            args.next()
-                .ok_or_else(on_err)
-                .map(|s| s.parse::<T>().map_err(|e| anyhow::anyhow!("{}", e)))
-                .and_then(std::convert::identity)
-        }
-
-        match name.as_str() {
-            "HI" => {
-                let res = Ok(Self::Handshake(next(&mut args, on_err)?));
-                if args.next().is_some() {
-                    return Err(on_err());
-                }
-                res
-            }
+        let res = match name.as_str() {
+            "HI" => Ok(Self::Handshake(next_arg(&mut args, on_err)?)),
             _ => Err(on_err()),
-        }
+        }?;
+        assert_iterator_is_empty(args).map(|_| res)
     }
     fn handle(&self) -> futures::future::BoxFuture<'static, ()> {
         todo!()
@@ -107,6 +93,75 @@ pub struct CasePreferences {
 // pub struct AOMessage {
 //     pub command: ClientCommand,
 // }
+
+pub trait CommandReader<C: Command>:
+    Stream<Item = Result<C, anyhow::Error>>
+{
+}
+impl<C: Command, S: Stream<Item = Result<C, anyhow::Error>>> CommandReader<C>
+    for S
+{
+}
+
+pub struct TcpCommandReader<C: Command> {
+    reader: ReadHalf<TcpStream>,
+    phantom: PhantomData<C>,
+}
+impl<C: Command> TcpCommandReader<C> {
+    pub fn new(reader: ReadHalf<TcpStream>) -> Self {
+        Self { reader, phantom: Default::default() }
+    }
+}
+
+impl<C: Command> Stream for TcpCommandReader<C> {
+    type Item = Result<C, anyhow::Error>;
+
+    fn poll_next(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Option<Self::Item>> {
+        unimplemented!()
+    }
+}
+
+pub fn next_arg<E, T, F>(
+    mut args: impl Iterator<Item = String>,
+    on_err: F,
+) -> Result<T, anyhow::Error>
+where
+    E: Display,
+    T: FromStr<Err = E>,
+    F: Fn() -> anyhow::Error,
+{
+    args.next()
+        .ok_or_else(on_err)
+        .map(|s| s.parse::<T>().map_err(|e| anyhow::anyhow!("{}", e)))
+        .and_then(std::convert::identity)
+}
+
+pub fn assert_iterator_is_empty<T>(
+    mut iter: impl Iterator<Item = T>,
+) -> Result<(), anyhow::Error> {
+    match iter.next().is_none() {
+        true => Ok(()),
+        false => Err(anyhow::anyhow!("Too many arguments!")),
+    }
+}
+
+pub fn to_message<S, I>(command: S, args: impl Iterator<Item = I>) -> String
+where
+    S: AsRef<str>,
+    I: AsRef<str>,
+{
+    let mut str = String::from(command.as_ref());
+    str.push('#');
+    args.for_each(|s| {
+        str.push_str(s.as_ref());
+        str.push('#');
+    });
+    str.push('%');
+    str
+}
 
 pub struct AOMessageCodec;
 
