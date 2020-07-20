@@ -81,9 +81,6 @@ impl Command for ClientCommand {
             _ => Err(on_err()),
         }
     }
-    fn handle(&self) -> futures::future::BoxFuture<'static, ()> {
-        todo!()
-    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -102,11 +99,6 @@ pub struct CasePreferences {
     pub jury: bool,
     pub steno: bool,
 }
-
-// #[derive(Debug)]
-// pub struct AOMessage {
-//     pub command: ClientCommand,
-// }
 
 pub struct AOMessageCodec;
 

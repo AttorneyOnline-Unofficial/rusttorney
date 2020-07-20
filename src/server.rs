@@ -1,4 +1,5 @@
-use crate::{config::Config, networking::Command, command::AOMessageCodec};
+use crate::command::ClientCommand;
+use crate::{command::AOMessageCodec, config::Config, networking::Command};
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use bytes::{Buf, BufMut, BytesMut};
@@ -13,7 +14,6 @@ use std::{
 use tokio::net::{TcpListener, TcpStream};
 use tokio_postgres::NoTls;
 use tokio_util::codec::{Decoder, Encoder, Framed};
-use crate::command::ClientCommand;
 
 #[rustfmt::skip]
 #[derive(Debug)]
