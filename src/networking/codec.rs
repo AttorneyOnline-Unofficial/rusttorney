@@ -69,33 +69,87 @@ impl Decoder for AOMessageCodec {
         &mut self,
         src: &mut BytesMut,
     ) -> Result<Option<Self::Item>, Self::Error> {
-        if src.is_empty() {
-            return Ok(None);
+        const ARG_SEP: u8 = b'#';
+        const MSG_END: &[u8] = b"#%";
+
+        if src.len() > 8192 {
+            // spam protection? Copied from legacy server
+            return Err(anyhow::anyhow!("Too much data"));
         }
 
-        let magic_b = src.iter().position(|&byte| byte == MAGIC_SEPARATOR);
-        if let Some(i) = magic_b {
-            let cmd = src.split_to(i);
+        // Find the end of AO message
+        let msg_end = match src.windows(2).position(|s| s == MSG_END) {
+            Some(idx) => idx,
+            None => return Ok(None),
+        };
 
-            let cmd_name = ignore_ill_utf8(&cmd);
-            src.advance(1);
+        // Take message from the buffer
+        let mut msg = src.split_to(msg_end);
+        // Forget message separator
+        src.advance(MSG_END.len());
 
-            let protocol_end = src.iter().rposition(|&b| b == MAGIC_END);
+        // Find the end of command name in message
+        let cmd_end =
+            msg.iter().position(|&c| c == ARG_SEP).unwrap_or_else(|| msg.len());
+        // Take the command name
+        let cmd_raw = msg.split_to(cmd_end);
+        let cmd = ignore_ill_utf8(&cmd_raw[..]);
 
-            if let Some(i) = protocol_end {
-                let args = src.split_to(i - 2);
+        // Divide rest of the message into chunks.
+        // If there are any arguments in the slice, it starts with '#'.
+        // `.skip(1)` ignores the empty string appearing because of it
+        let args_iter =
+            msg.as_ref().split(|&c| c == ARG_SEP).skip(1).map(ignore_ill_utf8);
 
-                src.clear();
+        Ok(Some(ClientCommand::from_protocol(cmd, args_iter)?))
+    }
 
-                return Ok(Some(Command::from_protocol(
-                    cmd_name,
-                    args.as_ref()
-                        .split(|&b| b == MAGIC_SEPARATOR)
-                        .map(|s| ignore_ill_utf8(s)),
-                )?));
+    fn decode_eof(
+        &mut self,
+        buf: &mut BytesMut,
+    ) -> Result<Option<Self::Item>, Self::Error> {
+        match self.decode(buf)? {
+            Some(frame) => Ok(Some(frame)),
+            None => {
+                if !buf.is_empty() {
+                    log::debug!("Ignoring remaining data");
+                    log::trace!("Ignored data: {:?}", buf.as_ref());
+                }
+                Ok(None)
             }
         }
+    }
+}
 
-        Ok(None)
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_handshake() {
+        let mut input = b"HI#hdid#%"[..].into();
+        let expected = ClientCommand::Handshake("hdid".into());
+        let actual = AOMessageCodec.decode(&mut input).unwrap().unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn mismatched_number_of_args() {
+        let mut input1 = b"HI#%"[..].into();
+        let mut input2 = b"HI#hdid#junk#%"[..].into();
+        assert!(AOMessageCodec.decode(&mut input1).is_err());
+        assert!(AOMessageCodec.decode(&mut input2).is_err());
+    }
+
+    #[test]
+    fn two_messages_in_one_chunk() {
+        let mut src = b"HI#hdid1#%HI#hdid2#%"[..].into();
+        let expected1 = ClientCommand::Handshake("hdid1".into());
+        let expected2 = ClientCommand::Handshake("hdid2".into());
+        let mut codec = AOMessageCodec;
+        let actual1 = codec.decode(&mut src).unwrap().unwrap();
+        assert_eq!(expected1, actual1);
+        let actual2 = codec.decode(&mut src).unwrap().unwrap();
+        assert_eq!(expected2, actual2);
     }
 }

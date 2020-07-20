@@ -1,6 +1,9 @@
 use crate::networking::Command;
+use bytes::{Buf, BytesMut};
+use std::borrow::Cow;
 use std::fmt::Display;
 use std::str::FromStr;
+use tokio_util::codec::Decoder;
 
 #[rustfmt::skip]
 #[derive(Debug)]
@@ -30,23 +33,6 @@ pub enum ClientCommand {
     CallModButton(Option<String>),               // ZZ?#<reason:String>?#%
 }
 
-#[derive(Debug)]
-pub struct EvidenceArgs {
-    pub name: String,
-    pub description: String,
-    pub image: String,
-}
-
-#[derive(Debug)]
-pub struct CasePreferences {
-    pub cm: bool,
-    pub def: bool,
-    pub pro: bool,
-    pub judge: bool,
-    pub jury: bool,
-    pub steno: bool,
-}
-
 #[rustfmt::skip]
 #[derive(Debug)]
 pub enum ServerCommand {
@@ -59,7 +45,6 @@ impl ServerCommand {
 
         match self {
             Handshake(str) => Some(vec![str]),
-            // _ => None,
         }
     }
 
@@ -77,7 +62,6 @@ impl Command for ClientCommand {
         name: String,
         mut args: impl Iterator<Item = String>,
     ) -> Result<Self, anyhow::Error> {
-        // let args = &mut args;
         let on_err = || {
             anyhow::anyhow!(
                 "Amount of arguments for command {} does not match!",
@@ -100,15 +84,32 @@ impl Command for ClientCommand {
                 .and_then(std::convert::identity)
         }
 
-        let res = match name.as_str() {
-            "HI" => Ok(Self::Handshake(next(&mut args, on_err)?)),
+        match name.as_str() {
+            "HI" => {
+                let res = Ok(Self::Handshake(next(&mut args, on_err)?));
+                if args.next().is_some() {
+                    return Err(on_err());
+                }
+                res
+            }
             _ => Err(on_err()),
-        };
-
-        if args.next().is_some() {
-            return Err(on_err());
-        };
-
-        res
+        }
     }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct EvidenceArgs {
+    pub name: String,
+    pub description: String,
+    pub image: String,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct CasePreferences {
+    pub cm: bool,
+    pub def: bool,
+    pub pro: bool,
+    pub judge: bool,
+    pub jury: bool,
+    pub steno: bool,
 }
