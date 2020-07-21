@@ -5,6 +5,33 @@ use bytes::{Buf, BufMut, BytesMut};
 use std::borrow::Cow;
 use tokio_util::codec::{Decoder, Encoder};
 
+/// Codec, which decodes Client Ace Attorney Online protocol lines to commands with arguments and other
+/// way around.
+///
+/// (courtesy of @WaffleLapkin)
+/// eBNF grammar:
+///
+/// ```ebnf
+/// text = ? valid utf-8 text that doesn't include hash symbol ('#') ?;
+///
+/// letter = "A" | "B" | "C" | "D" | "E" | "F" | "G"
+///        | "H" | "I" | "J" | "K" | "L" | "M" | "N"
+///        | "O" | "P" | "Q" | "R" | "S" | "T" | "U"
+///        | "V" | "W" | "X" | "Y" | "Z" | "a" | "b"
+///        | "c" | "d" | "e" | "f" | "g" | "h" | "i"
+///        | "j" | "k" | "l" | "m" | "n" | "o" | "p"
+///        | "q" | "r" | "s" | "t" | "u" | "v" | "w"
+///        | "x" | "y" | "z" ;
+///
+/// command-name = 2 * letter, 6 * [letter];
+///
+/// argument = text;
+/// args = { argument, "#" };
+///
+/// the-end = "%";
+///
+/// request = command-name, '#', args, the-end;
+/// ```
 pub struct AOMessageCodec;
 
 impl Decoder for AOMessageCodec {
