@@ -3,7 +3,7 @@ use command_derive::*;
 #[derive(Command)]
 enum ClientRequest {
     #[command(code = "HI")]
-    Hanshake {
+    Handshake {
         hdid: String
     },
     Ping

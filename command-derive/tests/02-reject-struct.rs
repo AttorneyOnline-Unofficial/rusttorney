@@ -1,7 +1,7 @@
 use command_derive::*;
 
 #[derive(Command)]
-struct Hanshake {
+struct Handshake {
     hdid: String
 }
 
