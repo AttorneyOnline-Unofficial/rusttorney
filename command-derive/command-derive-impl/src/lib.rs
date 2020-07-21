@@ -134,7 +134,7 @@ impl ::command_derive::Command for #enum_ident {
             )*
             code => return Err(::anyhow::anyhow!("Unknown command code: {}", code))
         };
-        if args.next().is_some() {
+        if args.next().unwrap().is_ok() {
             return Err(::anyhow::anyhow!("Too much args"));
         }
         Ok(res)
