@@ -1,6 +1,5 @@
-use crate::command::ClientCommand;
+use crate::command::{ClientCommand, ServerCommand};
 use crate::networking::Command;
-use crate::server::ServerCommand;
 use bytes::{Buf, BufMut, BytesMut};
 use std::borrow::Cow;
 use tokio_util::codec::{Decoder, Encoder};
@@ -146,8 +145,7 @@ fn ignore_ill_utf8(v: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::command::ClientCommand;
-    use crate::server::ServerCommand;
+    use crate::command::{ClientCommand, ServerCommand};
     use bytes::BytesMut;
 
     #[test]

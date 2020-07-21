@@ -119,3 +119,38 @@ pub fn assert_iterator_is_empty<T>(
         false => Err(anyhow::anyhow!("Too many arguments!")),
     }
 }
+
+#[rustfmt::skip]
+#[derive(Debug)]
+pub enum ServerCommand {
+    Handshake(String)
+}
+
+impl Command for ServerCommand {
+    fn from_protocol(
+        _name: String,
+        _args: impl Iterator<Item = String>,
+    ) -> Result<Self, anyhow::Error>
+    where
+        Self: Sized,
+    {
+        Err(anyhow::anyhow!("Cannot be made from protocol! (Server response)"))
+    }
+
+    fn ident(&self) -> &str {
+        use ServerCommand::*;
+
+        match self {
+            Handshake(_) => "HI",
+        }
+    }
+
+    fn extract_args(&self) -> Vec<&str> {
+        use ServerCommand::*;
+
+        match self {
+            Handshake(str) => vec![str],
+            // _ => None,
+        }
+    }
+}
