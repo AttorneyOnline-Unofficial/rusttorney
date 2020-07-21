@@ -1,53 +1,15 @@
-use crate::command::ClientCommand;
-use crate::networking::Command;
-use crate::{command::AOMessageCodec, config::Config};
-use anyhow::Error;
+use crate::command::{ClientCommand, ServerCommand};
+use crate::config::Config;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 
+use crate::networking::codec::AOMessageCodec;
 use crate::client_manager::ClientManager;
 use futures::stream::SplitSink;
 use futures::SinkExt;
-use std::fmt::Debug;
-use std::sync::{Arc, Mutex};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_postgres::NoTls;
 use tokio_util::codec::{Decoder, Framed};
-
-#[rustfmt::skip]
-#[derive(Debug)]
-pub enum ServerCommand {
-    Handshake(String)
-}
-
-impl Command for ServerCommand {
-    fn from_protocol(
-        _name: String,
-        _args: impl Iterator<Item = String>,
-    ) -> Result<Self, Error>
-    where
-        Self: Sized,
-    {
-        Err(anyhow::anyhow!("Cannot be made from protocol! (Server response)"))
-    }
-
-    fn ident(&self) -> &str {
-        use ServerCommand::*;
-
-        match self {
-            Handshake(_) => "HI",
-        }
-    }
-
-    fn extract_args(&self) -> Vec<&str> {
-        use ServerCommand::*;
-
-        match self {
-            Handshake(str) => vec![str],
-            // _ => None,
-        }
-    }
-}
 
 pub struct AOServer<'a> {
     config: &'a Config<'a>,
