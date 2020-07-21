@@ -3,9 +3,11 @@ use crate::config::Config;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 
+use crate::client_manager::ClientManager;
 use crate::networking::codec::AOMessageCodec;
 use futures::stream::SplitSink;
 use futures::SinkExt;
+use std::sync::{Arc, Mutex};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_postgres::NoTls;
 use tokio_util::codec::{Decoder, Framed};
@@ -13,19 +15,22 @@ use tokio_util::codec::{Decoder, Framed};
 pub struct AOServer<'a> {
     config: &'a Config<'a>,
     db_pool: Pool<PostgresConnectionManager<NoTls>>,
+    client_manager: Arc<Mutex<ClientManager>>,
 }
 
 pub struct AO2MessageHandler {
     socket: SplitSink<Framed<TcpStream, AOMessageCodec>, ServerCommand>,
     db_pool: Pool<PostgresConnectionManager<NoTls>>,
+    client_manager: Arc<Mutex<ClientManager>>,
 }
 
 impl AO2MessageHandler {
     pub fn new(
         socket: SplitSink<Framed<TcpStream, AOMessageCodec>, ServerCommand>,
         db_pool: Pool<PostgresConnectionManager<NoTls>>,
+        client_manager: Arc<Mutex<ClientManager>>,
     ) -> Self {
-        Self { socket, db_pool }
+        Self { socket, db_pool, client_manager }
     }
 
     pub async fn handle(
@@ -58,7 +63,14 @@ impl<'a> AOServer<'a> {
         config: &'a Config<'a>,
         db_pool: Pool<PostgresConnectionManager<NoTls>>,
     ) -> anyhow::Result<Self> {
-        Ok(Self { config, db_pool })
+        let playerlimit = config.general.playerlimit;
+        Ok(Self {
+            config,
+            db_pool,
+            client_manager: Arc::new(Mutex::new(ClientManager::new(
+                playerlimit,
+            ))),
+        })
     }
 
     async fn migrate(&mut self) -> anyhow::Result<()> {
@@ -112,13 +124,15 @@ impl<'a> AOServer<'a> {
 
         loop {
             let db_pool = self.db_pool.clone();
+            let client_manager = self.client_manager.clone();
             let (socket, c) = listener.accept().await?;
             log::debug!("got incoming connection from: {:?}", &c);
 
             tokio::spawn(async move {
                 let (msg_sink, mut msg_stream) =
                     AOMessageCodec.framed(socket).split();
-                let mut handler = AO2MessageHandler::new(msg_sink, db_pool);
+                let mut handler =
+                    AO2MessageHandler::new(msg_sink, db_pool, client_manager);
 
                 while let Some(msg_res) = msg_stream.next().await {
                     match msg_res {
