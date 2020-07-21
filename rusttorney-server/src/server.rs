@@ -1,7 +1,5 @@
 use crate::command::{ClientCommand, ServerCommand};
 use crate::config::Config;
-use bb8::Pool;
-use bb8_postgres::PostgresConnectionManager;
 
 use crate::networking::codec::AOMessageCodec;
 use crate::networking::database::DbWrapper;
