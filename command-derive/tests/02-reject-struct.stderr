@@ -1,0 +1,7 @@
+error: `Command` macro might be used only with enums
+ --> $DIR/02-reject-struct.rs:3:10
+  |
+3 | #[derive(Command)]
+  |          ^^^^^^^
+  |
+  = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
