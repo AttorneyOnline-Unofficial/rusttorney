@@ -5,11 +5,16 @@ use crate::client_manager::ClientManager;
 use crate::networking::codec::AOMessageCodec;
 use crate::networking::database::DbWrapper;
 use futures::stream::SplitSink;
-use futures::SinkExt;
+use futures::{SinkExt, StreamExt};
 use std::sync::{Arc, Mutex};
 use tokio::net::{TcpListener, TcpStream};
 
 use tokio_util::codec::{Decoder, Framed};
+use tokio::time::Duration;
+use tokio::select;
+use futures::channel::oneshot::{Receiver, channel, Sender};
+use std::ops::Deref;
+use std::convert::Infallible;
 
 pub struct AOServer<'a> {
     config: &'a Config<'a>,
@@ -18,21 +23,46 @@ pub struct AOServer<'a> {
 }
 
 pub struct AO2MessageHandler {
-    socket: SplitSink<Framed<TcpStream, AOMessageCodec>, ServerCommand>,
+    socket: Framed<TcpStream, AOMessageCodec>,
     db: DbWrapper,
     client_manager: Arc<Mutex<ClientManager>>,
+    timeout_rx: Receiver<()>,
+    ch_tx: futures::channel::mpsc::Sender<()>,
 }
 
 impl AO2MessageHandler {
     pub fn new(
-        socket: SplitSink<Framed<TcpStream, AOMessageCodec>, ServerCommand>,
+        socket: Framed<TcpStream, AOMessageCodec>,
         db: DbWrapper,
         client_manager: Arc<Mutex<ClientManager>>,
+        timeout: u64
     ) -> Self {
-        Self { socket, db, client_manager }
+        let (timeout_tx, timeout_rx) = channel();
+        let (ch_tx, mut ch_rx) = futures::channel::mpsc::channel(1);
+
+        tokio::spawn(async move {
+            let mut delay = tokio::time::delay_for(Duration::from_millis(timeout));
+
+            loop {
+                select! {
+                    _ = &mut delay => {
+                        log::debug!("Timeout!");
+                        timeout_tx.send(());
+                        break;
+                    }
+                    _ = ch_rx.next() => {
+                        log::debug!("Restarting delay...");
+                        delay = tokio::time::delay_for(Duration::from_millis(timeout));
+                        log::debug!("{:?}", &delay);
+                    }
+                }
+            }
+        });
+
+        Self { socket, db, client_manager, timeout_rx, ch_tx }
     }
 
-    pub async fn handle(
+    async fn handle(
         &mut self,
         command: ClientCommand,
     ) -> Result<(), anyhow::Error> {
@@ -42,16 +72,42 @@ impl AO2MessageHandler {
                 drop(conn);
                 log::debug!("Handshake from HDID: {}", hdid);
                 self.handle_handshake(hdid).await
+            },
+            ClientCommand::KeepAlive(_) => {
+                log::debug!("Got CH (KeepAlive)");
+                self.handle_keepalive().await
             }
             _ => Ok(()),
         }
     }
 
-    pub async fn handle_handshake(
+    async fn handle_handshake(
         &mut self,
         _hdid: String,
     ) -> Result<(), anyhow::Error> {
         self.socket.send(ServerCommand::Handshake(1111.to_string())).await?;
+
+        Ok(())
+    }
+
+    async fn handle_keepalive(&mut self) -> Result<(), anyhow::Error> {
+        self.ch_tx.send(()).await?;
+        self.socket.send(ServerCommand::KeepAlive).await?;
+
+        Ok(())
+    }
+
+    async fn start_handling(&mut self) -> Result<(), anyhow::Error> {
+        while let Some(res) = self.socket.next().await {
+            match res {
+                Ok(msg) => {
+                    self.handle(msg).await?;
+                },
+                Err(e) => {
+                    log::error!("Got error {:?}", e);
+                }
+            }
+        }
 
         Ok(())
     }
@@ -123,23 +179,16 @@ impl<'a> AOServer<'a> {
             let client_manager = self.client_manager.clone();
             let (socket, c) = listener.accept().await?;
             log::debug!("got incoming connection from: {:?}", &c);
+            let timeout = self.config.timeout as u64;
 
             tokio::spawn(async move {
-                let (msg_sink, mut msg_stream) =
-                    AOMessageCodec.framed(socket).split();
+                let framed =
+                    AOMessageCodec.framed(socket);
 
                 let mut handler =
-                    AO2MessageHandler::new(msg_sink, db, client_manager);
+                    AO2MessageHandler::new(framed, db, client_manager, 5000);
 
-                while let Some(msg_res) = msg_stream.next().await {
-                    match msg_res {
-                        Ok(msg) => {
-                            log::debug!("Got command! {:?}", &msg);
-                            handler.handle(msg).await.unwrap();
-                        }
-                        Err(err) => log::error!("Got error! {:?}", err),
-                    }
-                }
+                handler.start_handling().await.unwrap();
             });
         }
     }
