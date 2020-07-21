@@ -7,6 +7,7 @@ use crate::networking::codec::AOMessageCodec;
 use tokio::net::TcpStream;
 use tokio_util::codec::Framed;
 
+#[allow(unused)]
 pub struct Client {
     is_checked: bool,
     // socket: FramedWrite,

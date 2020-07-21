@@ -64,8 +64,8 @@ impl<'a> AOServer<'a> {
             config,
             db,
             client_manager: Arc::new(Mutex::new(ClientManager::new(
-                playerlimit
-            )))
+                playerlimit,
+            ))),
         })
     }
 
@@ -127,7 +127,9 @@ impl<'a> AOServer<'a> {
             tokio::spawn(async move {
                 let (msg_sink, mut msg_stream) =
                     AOMessageCodec.framed(socket).split();
-                let mut handler = AO2MessageHandler::new(msg_sink, db, client_manager);
+
+                let mut handler =
+                    AO2MessageHandler::new(msg_sink, db, client_manager);
 
                 while let Some(msg_res) = msg_stream.next().await {
                     match msg_res {
