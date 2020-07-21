@@ -1,13 +1,14 @@
 use darling::{ast::Data, FromDeriveInput, FromMeta};
 use proc_macro::TokenStream;
-use quote::quote;
-use syn::{parse_macro_input, DeriveInput};
+use proc_macro2::TokenStream as TokenStream2;
+use quote::{quote, format_ident};
+use syn::{parse_macro_input, DeriveInput, Ident, Fields, Member, Variant};
 
 #[derive(Debug, FromDeriveInput)]
 #[darling(attributes(command))]
 struct CommandOps {
-    ident: syn::Ident,
-    data: Data<syn::Variant, ()>,
+    ident: Ident,
+    data: Data<Variant, ()>,
 }
 
 #[derive(Debug, FromMeta)]
@@ -26,29 +27,120 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
         Data::Enum(vars) => vars,
         _ => return str_as_compile_error("`Command` macro might be used only with enums"),
     };
+    let mut var_idents = Vec::with_capacity(vars.len());
+    let mut codes = Vec::with_capacity(vars.len());
+    let mut patterns = Vec::with_capacity(vars.len());
+    let mut named_fields = Vec::with_capacity(vars.len());
+    let mut idx_fields = Vec::with_capacity(vars.len());
     for var in vars {
-        let mut codes = var
-            .attrs
+        let Variant { attrs, ident, fields, .. } = var;
+        let mut codes_iter = attrs
             .iter()
             .filter_map(|attr| attr.parse_meta().ok())
             .filter_map(|meta| VariantCode::from_meta(&meta).ok())
             .fuse();
-        let _code = match (codes.next(), codes.next()) {
-            (Some(code), None) => code,
+        let code = match (codes_iter.next(), codes_iter.next()) {
+            (Some(var_code), None) => var_code.code,
             _ => {
                 return str_as_compile_error(&format!(
                     concat!(
                         r#"Variant {}::{} does not have exactly one "#,
                         r#"attribute in a form of `#[command(code = "CODE")]`"#
                     ),
-                    enum_ident, var.ident
+                    enum_ident, ident
                 ))
             }
         };
+        let (named_fields_piece, idx_fields_piece, pattern) = match fields {
+            Fields::Named(named) => {
+                let named_iter: Vec<_> = named.named
+                    .into_iter()
+                    .map(|field| field.ident.expect("Variant is guaranteed to be named"))
+                    .collect();
+                let idx_fields_piece: Vec<_> = named_iter
+                    .iter().cloned()
+                    .map(|ident| Member::Named(ident))
+                    .collect();
+                let pattern: TokenStream2 = quote!{
+                    #ident {#(
+                        #named_iter,
+                    )*}
+                };
+                (named_iter, idx_fields_piece, pattern)
+            },
+            Fields::Unnamed(unnamed) => {
+                let named_fields_piece: Vec<_> = unnamed.unnamed.iter().cloned()
+                    .enumerate()
+                    .map(|(i, _)| format_ident!("x{}", i))
+                    .collect();
+                let idx_fields_piece: Vec<_> = unnamed.unnamed.into_iter()
+                    .enumerate()
+                    .map(|(i, _)| Member::Unnamed(i.into()))
+                    .collect();
+                let pattern: TokenStream2 = quote!{
+                    #ident ( #(#named_fields_piece,)* )
+                };
+                (named_fields_piece, idx_fields_piece, pattern)
+            }
+            Fields::Unit => (vec![], vec![], (quote!{ #ident }).into())
+        };
+        var_idents.push(ident);
+        codes.push(code);
+        patterns.push(pattern);
+        named_fields.push(named_fields_piece);
+        idx_fields.push(idx_fields_piece);
         // eprintln!("{}.code = {:?}", var.ident, code);
     }
     // eprint!("{:#?}", vars);
-    Default::default()
+    (quote!{
+impl ::command_derive::Command for #enum_ident {
+    fn ident(&self) -> &'static str {
+        match self {
+            // ClientRequest::Handshake { .. } => "HI",
+            // ClientRequest::Handshake2 { .. } => "HEY",
+            // ClientRequest::Pong { .. } => "PONG"
+            #(
+                #enum_ident::#var_idents { .. } => #codes,
+            )*
+        }
+    }
+
+    fn extract_args(&self) -> Vec<String> {
+        match self {
+            // ClientRequest::Handshake { hdid } => vec![hdid.to_string()],
+            // ClientRequest::Handshake2(x0) => vec![x0.to_string()],
+            // ClientRequest::Pong => vec![]
+            #(
+                #enum_ident::#patterns => vec![#(#named_fields.to_string(),)*],
+            )*
+        }
+    }
+
+    fn from_protocol<I>(code: &str, args: I) -> Result<Self, ::anyhow::Error> where I: Iterator<Item = String> {
+        let mut args = args.map(Ok).chain(::std::iter::from_fn(|| Some(Err(::anyhow::anyhow!("Not enough args")))));
+
+        let res = match code {
+            // "HI" => ClientRequest::Handshake {
+            //     hdid: args.next().unwrap()?.parse().map_err(|e| ::anyhow::anyhow!("{}", e))?
+            // },
+            // "HEY" => ClientRequest::Handshake2 {
+            //     0: args.next().unwrap()?.parse().map_err(|e| ::anyhow::anyhow!("{}", e))?
+            // },
+            // "PONG" => ClientRequest::Pong {},
+            #(
+                #codes => #enum_ident::#var_idents{#(
+                    #idx_fields: args.next().unwrap()?.parse().map_err(|e| ::anyhow::anyhow!("{}", e))?,
+                )*},
+            )*
+            code => return Err(::anyhow::anyhow!("Unknown command code: {}", code))
+        };
+        if args.next().is_some() {
+            return Err(::anyhow::anyhow!("Too much args"));
+        }
+        Ok(res)
+    }
+}
+    }).into()
 }
 
 fn str_as_compile_error(s: &str) -> TokenStream {

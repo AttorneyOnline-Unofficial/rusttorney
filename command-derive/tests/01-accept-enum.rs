@@ -14,7 +14,7 @@ enum ClientRequest {
     Pong
 }
 
-
+/*
 impl ::command_derive::Command for ClientRequest {
     fn ident(&self) -> &'static str {
         match self {
@@ -49,6 +49,6 @@ impl ::command_derive::Command for ClientRequest {
         Ok(res)
     }
 }
-
+*/
 
 fn main() {}

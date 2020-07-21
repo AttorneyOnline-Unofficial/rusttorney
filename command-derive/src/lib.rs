@@ -9,7 +9,7 @@ pub trait Command: Sized {
 
     fn extract_args<'a>(&'a self) -> Vec<String>;
 
-    fn to_message<S, I>(&self) -> String {
+    fn to_message(&self) -> String {
         let mut res = String::from(self.ident());
         res.push('#');
         self.extract_args().into_iter().for_each(|s| {
