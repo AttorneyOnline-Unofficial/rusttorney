@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-
+#![allow(unused)]
 pub mod client_manager;
 pub mod command;
 pub mod config;
