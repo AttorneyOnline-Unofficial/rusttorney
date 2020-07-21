@@ -3,10 +3,11 @@ use crate::config::Config;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 
-use crate::networking::codec::AOMessageCodec;
 use crate::client_manager::ClientManager;
+use crate::networking::codec::AOMessageCodec;
 use futures::stream::SplitSink;
 use futures::SinkExt;
+use std::sync::{Arc, Mutex};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_postgres::NoTls;
 use tokio_util::codec::{Decoder, Framed};
