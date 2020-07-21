@@ -89,16 +89,11 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
         patterns.push(pattern);
         named_fields.push(named_fields_piece);
         idx_fields.push(idx_fields_piece);
-        // eprintln!("{}.code = {:?}", var.ident, code);
     }
-    // eprint!("{:#?}", vars);
     (quote!{
 impl ::command_derive::Command for #enum_ident {
     fn ident(&self) -> &'static str {
         match self {
-            // ClientRequest::Handshake { .. } => "HI",
-            // ClientRequest::Handshake2 { .. } => "HEY",
-            // ClientRequest::Pong { .. } => "PONG"
             #(
                 #enum_ident::#var_idents { .. } => #codes,
             )*
@@ -107,9 +102,6 @@ impl ::command_derive::Command for #enum_ident {
 
     fn extract_args(&self) -> Vec<String> {
         match self {
-            // ClientRequest::Handshake { hdid } => vec![hdid.to_string()],
-            // ClientRequest::Handshake2(x0) => vec![x0.to_string()],
-            // ClientRequest::Pong => vec![]
             #(
                 #enum_ident::#patterns => vec![#(#named_fields.to_string(),)*],
             )*
@@ -120,13 +112,6 @@ impl ::command_derive::Command for #enum_ident {
         let mut args = args.map(Ok).chain(::std::iter::from_fn(|| Some(Err(::anyhow::anyhow!("Not enough args")))));
 
         let res = match code {
-            // "HI" => ClientRequest::Handshake {
-            //     hdid: args.next().unwrap()?.parse().map_err(|e| ::anyhow::anyhow!("{}", e))?
-            // },
-            // "HEY" => ClientRequest::Handshake2 {
-            //     0: args.next().unwrap()?.parse().map_err(|e| ::anyhow::anyhow!("{}", e))?
-            // },
-            // "PONG" => ClientRequest::Pong {},
             #(
                 #codes => #enum_ident::#var_idents{#(
                     #idx_fields: args.next().unwrap()?.parse().map_err(|e| ::anyhow::anyhow!("{}", e))?,
