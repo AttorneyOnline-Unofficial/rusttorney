@@ -3,6 +3,7 @@ use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use env_logger::Env;
 use log::LevelFilter;
+use rusttorney_server::client_manager::ClientManager;
 use rusttorney_server::master_server_client::MasterServerClient;
 use rusttorney_server::networking::database::DbWrapper;
 use rusttorney_server::{config::Config, server::AOServer};
