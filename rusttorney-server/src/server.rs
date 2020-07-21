@@ -1,10 +1,11 @@
 use crate::command::ClientCommand;
+use crate::config::Config;
 use crate::networking::Command;
-use crate::{command::AOMessageCodec, config::Config};
 use anyhow::Error;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 
+use crate::networking::codec::AOMessageCodec;
 use futures::stream::SplitSink;
 use futures::SinkExt;
 use std::fmt::Debug;
