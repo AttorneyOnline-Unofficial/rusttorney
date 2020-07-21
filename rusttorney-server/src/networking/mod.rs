@@ -21,3 +21,4 @@ pub trait Command: Sized {
 }
 
 pub mod database;
+pub mod codec;
