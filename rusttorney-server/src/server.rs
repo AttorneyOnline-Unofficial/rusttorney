@@ -26,7 +26,6 @@ pub struct AO2MessageHandler {
     socket: Framed<TcpStream, AOMessageCodec>,
     db: DbWrapper,
     client_manager: Arc<Mutex<ClientManager>>,
-    timeout_rx: Receiver<()>,
     ch_tx: futures::channel::mpsc::Sender<()>,
 }
 
@@ -36,8 +35,8 @@ impl AO2MessageHandler {
         db: DbWrapper,
         client_manager: Arc<Mutex<ClientManager>>,
         timeout: u64,
+        timeout_tx: Sender<()>,
     ) -> Self {
-        let (timeout_tx, timeout_rx) = channel();
         let (ch_tx, mut ch_rx) = futures::channel::mpsc::channel(1);
 
         tokio::spawn(async move {
@@ -47,20 +46,21 @@ impl AO2MessageHandler {
             loop {
                 select! {
                     _ = &mut delay => {
-                        log::debug!("Timeout!");
                         timeout_tx.send(());
                         break;
                     }
-                    _ = ch_rx.next() => {
-                        log::debug!("Restarting delay...");
-                        delay = tokio::time::delay_for(Duration::from_millis(timeout));
-                        log::debug!("{:?}", &delay);
+                    next = ch_rx.next() => {
+                        if next.is_some() {
+                            delay = tokio::time::delay_for(Duration::from_millis(timeout));
+                        } else {
+                            break;
+                        }
                     }
                 }
             }
         });
 
-        Self { socket, db, client_manager, timeout_rx, ch_tx }
+        Self { socket, db, client_manager, ch_tx }
     }
 
     async fn handle(
@@ -68,16 +68,8 @@ impl AO2MessageHandler {
         command: ClientCommand,
     ) -> Result<(), anyhow::Error> {
         match command {
-            ClientCommand::Handshake(hdid) => {
-                let conn = self.db.get().await?;
-                drop(conn);
-                log::debug!("Handshake from HDID: {}", hdid);
-                self.handle_handshake(hdid).await
-            }
-            ClientCommand::KeepAlive(_) => {
-                log::debug!("Got CH (KeepAlive)");
-                self.handle_keepalive().await
-            }
+            ClientCommand::Handshake(hdid) => self.handle_handshake(hdid).await,
+            ClientCommand::KeepAlive(_) => self.handle_keepalive().await,
             _ => Ok(()),
         }
     }
@@ -98,19 +90,24 @@ impl AO2MessageHandler {
         Ok(())
     }
 
-    async fn start_handling(&mut self) -> Result<(), anyhow::Error> {
-        while let Some(res) = self.socket.next().await {
-            match res {
-                Ok(msg) => {
-                    self.handle(msg).await?;
-                }
-                Err(e) => {
-                    log::error!("Got error {:?}", e);
+    async fn start_handling(
+        mut self,
+        mut timeout_rx: Receiver<()>,
+    ) -> Result<(), anyhow::Error> {
+        loop {
+            select! {
+                _ = &mut timeout_rx => {
+                    return Err(anyhow::anyhow!("Client disconnected because of timeout!"));
+                },
+                res = self.socket.next() => {
+                    if let Some(parsed) = res {
+                        self.handle(parsed?).await?;
+                    } else {
+                        return Err(anyhow::anyhow!("Client disconnected!"));
+                    }
                 }
             }
         }
-
-        Ok(())
     }
 }
 
@@ -185,10 +182,23 @@ impl<'a> AOServer<'a> {
             tokio::spawn(async move {
                 let framed = AOMessageCodec.framed(socket);
 
-                let mut handler =
-                    AO2MessageHandler::new(framed, db, client_manager, 5000);
+                let (timeout_tx, timeout_rx) = channel();
 
-                handler.start_handling().await.unwrap();
+                let mut handler = AO2MessageHandler::new(
+                    framed,
+                    db,
+                    client_manager,
+                    5000,
+                    timeout_tx,
+                );
+
+                match handler
+                    .start_handling(timeout_rx)
+                    .await
+                    .map_err(|e| log::error!("{}", e))
+                {
+                    _ => (),
+                }
             });
         }
     }
