@@ -15,6 +15,7 @@ use futures::lock::Mutex;
 use std::convert::Infallible;
 use std::net::IpAddr;
 use std::ops::Deref;
+use std::path::PathBuf;
 use tokio::select;
 use tokio::time::Duration;
 use tokio_util::codec::{Decoder, Framed};
@@ -25,7 +26,7 @@ pub struct AOServer<'a> {
     client_manager: Arc<Mutex<ClientManager>>,
 }
 
-pub struct AO2MessageHandler {
+pub struct AO2MessageHandler<'a> {
     socket: Framed<TcpStream, AOMessageCodec>,
     db: DbWrapper,
     client_manager: Arc<Mutex<ClientManager>>,
@@ -33,9 +34,10 @@ pub struct AO2MessageHandler {
     client: Client,
     software: String,
     version: String,
+    config: Config<'a>,
 }
 
-impl AO2MessageHandler {
+impl<'a> AO2MessageHandler<'a> {
     pub async fn new(
         mut socket: Framed<TcpStream, AOMessageCodec>,
         db: DbWrapper,
@@ -43,7 +45,8 @@ impl AO2MessageHandler {
         timeout: u64,
         timeout_tx: Sender<()>,
         ip: IpAddr,
-    ) -> Result<Self, anyhow::Error> {
+        config: Config<'a>,
+    ) -> Result<AO2MessageHandler<'a>, anyhow::Error> {
         let (ch_tx, mut ch_rx) = futures::channel::mpsc::channel(1);
 
         tokio::spawn(async move {
@@ -89,6 +92,7 @@ impl AO2MessageHandler {
             client,
             software: "rusttorney".into(),
             version: "0.0.1".into(),
+            config,
         })
     }
 
@@ -121,7 +125,10 @@ impl AO2MessageHandler {
             .await?;
 
         self.socket
-            .send(ServerCommand::PlayerCount(self.player_count().await, 255))
+            .send(ServerCommand::PlayerCount(
+                self.player_count().await,
+                self.config.general.playerlimit,
+            ))
             .await
     }
 
@@ -239,6 +246,11 @@ impl<'a> AOServer<'a> {
                 // https://github.com/AttorneyOnline/tsuserver3/blob/master/server/network/aoprotocol.py#L135
                 framed.send(ServerCommand::Decryptor(34)).await.unwrap();
 
+                let config_path = PathBuf::from("./config/config.toml");
+                let config_string =
+                    std::fs::read_to_string(&config_path).unwrap();
+                let config: Config = toml::from_str(&config_string).unwrap();
+
                 let mut handler = AO2MessageHandler::new(
                     framed,
                     db,
@@ -246,6 +258,7 @@ impl<'a> AOServer<'a> {
                     timeout,
                     timeout_tx,
                     c.ip(),
+                    config,
                 )
                 .await
                 .unwrap();
