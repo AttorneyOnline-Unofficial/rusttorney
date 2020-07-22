@@ -1,5 +1,7 @@
 #![allow(unused)]
-use deadpool_postgres::{Config as PgConfig, Manager, ManagerConfig, Pool, RecyclingMethod };
+use deadpool_postgres::{
+    Config as PgConfig, Manager, ManagerConfig, Pool, RecyclingMethod,
+};
 use env_logger::Env;
 use log::LevelFilter;
 use rusttorney_server::client_manager::ClientManager;
@@ -38,7 +40,8 @@ async fn main() -> anyhow::Result<()> {
     let mut pg_config = PgConfig::new();
     pg_config.dbname = Some("rusttorney".into());
     pg_config.user = Some("postgres".into());
-    pg_config.manager = Some(ManagerConfig { recycling_method: RecyclingMethod::Fast });
+    pg_config.manager =
+        Some(ManagerConfig { recycling_method: RecyclingMethod::Fast });
 
     let pool = pg_config.create_pool(tokio_postgres::NoTls)?;
 

@@ -1,7 +1,7 @@
+use deadpool::managed::{Object, PoolError};
+use deadpool_postgres::{ClientWrapper, Pool};
 use std::net::IpAddr;
 use tokio_postgres::{Error, NoTls};
-use deadpool_postgres::{Pool, ClientWrapper};
-use deadpool::managed::{PoolError, Object};
 
 pub struct DbWrapper {
     db_pool: Pool,
@@ -16,10 +16,7 @@ impl Clone for DbWrapper {
 impl DbWrapper {
     pub(crate) async fn get(
         &self,
-    ) -> Result<
-        Object<ClientWrapper, Error>,
-        PoolError<Error>,
-    > {
+    ) -> Result<Object<ClientWrapper, Error>, PoolError<Error>> {
         self.db_pool.get().await
     }
 
