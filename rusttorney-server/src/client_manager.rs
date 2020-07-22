@@ -17,14 +17,14 @@ use tokio_util::codec::Framed;
 #[derive(Debug, Clone, Default)]
 pub struct Client {
     is_checked: bool,
-    pub hdid: String,
-    pub id: u8,
-    pub char_id: i32,
+    pub(crate) hdid: String,
+    pub(crate) id: u8,
+    pub(crate) char_id: i32,
     // area: AreaManager,
     name: String,
     fake_name: String,
     is_mod: bool,
-    pub ipid: u32,
+    pub(crate) ipid: u32,
     // TODO: other fields
 }
 
@@ -50,7 +50,7 @@ impl Client {
 }
 
 pub struct ClientManager {
-    pub clients: HashSet<Client>,
+    pub(crate) clients: HashSet<Client>,
     // config: Config<'a>,
     cur_id: BinaryHeap<u8>,
     db: DbWrapper,
@@ -58,8 +58,7 @@ pub struct ClientManager {
 
 impl ClientManager {
     pub fn new(playerlimit: u8, db: DbWrapper) -> Self {
-        let mut cur_id = BinaryHeap::new();
-        (0..playerlimit).for_each(|i| cur_id.push(i));
+        let cur_id = (0..playerlimit).collect();
         Self {
             clients: HashSet::new(),
             // config,
@@ -93,6 +92,7 @@ impl ClientManager {
         let ipid = self.db.ipid(ip).await? as u32;
 
         let client = Client::new(user_id, ipid);
+        // We have to clone here to store each client in a HashSet
         self.clients.insert(client.clone());
 
         Ok(client)

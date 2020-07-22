@@ -9,10 +9,12 @@ use futures::{SinkExt, StreamExt};
 use std::sync::Arc;
 use tokio::net::{TcpListener, TcpStream};
 
+use crate::prompt;
 use futures::channel::mpsc;
 use futures::channel::oneshot::{channel, Receiver, Sender};
 use futures::lock::Mutex;
 use std::convert::Infallible;
+use std::io::{stdin, Read};
 use std::net::IpAddr;
 use std::ops::Deref;
 use std::path::PathBuf;
@@ -130,13 +132,13 @@ impl<'a> AO2MessageHandler<'a> {
     }
 
     async fn player_count(&self) -> u8 {
-        self.client_manager.lock().await.clients.iter().fold(0, |acc, c| {
-            if c.char_id != 1 {
-                acc + 1
-            } else {
-                acc
-            }
-        })
+        self.client_manager
+            .lock()
+            .await
+            .clients
+            .iter()
+            .filter(|c| c.char_id != 1)
+            .count() as u8
     }
 
     async fn handle_keepalive(&mut self) -> Result<(), anyhow::Error> {
@@ -180,53 +182,71 @@ impl<'a> AOServer<'a> {
         })
     }
 
-    async fn migrate(&mut self) -> anyhow::Result<()> {
+    async fn begin_migration(&mut self) -> anyhow::Result<()> {
+        const LATEST_VERSION: i32 = 3;
+
         log::debug!("Getting pool connection for migration...");
         let mut conn = self.db.get().await?;
         let stmt = conn.prepare("SELECT db_version FROM general_info").await;
 
-        let current_version = match stmt {
+        let mut current_version = match stmt {
             Err(_) => {
-                log::info!("Migrating database...");
-                let mut migrations = std::fs::read_dir("migrations")?
-                    .map(|res| res.map(|e| e.path()))
-                    .collect::<Result<Vec<_>, std::io::Error>>()?;
-
-                migrations.sort();
-
-                for migration in migrations {
-                    log::debug!("Executing migration: {:?}", &migration);
-                    let migration_stmt = std::fs::read_to_string(migration)?;
-                    let tx = conn.transaction().await?;
-                    tx.batch_execute(&migration_stmt).await?;
-                    tx.commit().await?;
+                if !prompt("Begin the migration?") {
+                    return Ok(());
                 }
-                log::info!("Succesfully migrated!");
-                log::debug!("GCing the DB...");
-                conn.query("VACUUM", &[]).await?;
-
-                let row = conn
-                    .query_one("SELECT db_version FROM general_info", &[])
-                    .await?;
-                row.get::<_, i32>(0_usize)
+                self.migrate().await?
             }
             Ok(stmt) => {
                 let row = conn.query_one(&stmt, &[]).await?;
-                row.get::<_, i32>(0_usize)
+                row.get(0_usize)
             }
         };
+
+        if current_version < LATEST_VERSION {
+            if !prompt("Begin the migration?") {
+                return Ok(());
+            }
+            current_version = self.migrate().await?;
+        };
+
         log::info!("Current DB version is: v{}", current_version);
         Ok(())
+    }
+
+    async fn migrate(&mut self) -> anyhow::Result<i32> {
+        let mut conn = self.db.get().await?;
+        log::info!("Migrating database...");
+        let mut migrations = std::fs::read_dir("migrations")?
+            .map(|res| res.map(|e| e.path()))
+            .collect::<Result<Vec<_>, std::io::Error>>()?;
+
+        migrations.sort();
+
+        for migration in migrations {
+            log::debug!("Executing migration: {:?}", &migration);
+            let migration_stmt = std::fs::read_to_string(migration)?;
+            let tx = conn.transaction().await?;
+            tx.batch_execute(&migration_stmt).await?;
+            tx.commit().await?;
+        }
+        log::info!("Succesfully migrated!");
+        log::debug!("GCing the DB...");
+        conn.execute("VACUUM", &[]).await?;
+        let row =
+            conn.query_one("SELECT db_version FROM general_info", &[]).await?;
+        Ok(row.get(0_usize))
     }
 
     pub async fn run(&mut self) -> anyhow::Result<()> {
         use futures::StreamExt;
 
-        log::debug!("Beginning migration...");
-        self.migrate().await?;
+        self.begin_migration().await?;
 
         log::info!("Starting up the server...");
-        let addr = format!("0.0.0.0:{}", self.config.general.port);
+        let addr = format!(
+            "{}:{}",
+            self.config.general.host, self.config.general.port
+        );
         log::info!("Binding to address: {}", &addr);
 
         let mut listener = TcpListener::bind(addr).await?;
