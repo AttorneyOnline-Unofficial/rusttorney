@@ -9,9 +9,8 @@ use std::{
 #[derive(Debug, PartialEq)]
 pub enum ClientCommand {
     Handshake(String),                           // HI#<hdid:String>#%
-    ClientVersion(u32, String, String),          /* ID#<pv:u32>#<software:String>#
-                                                  * <version:String>#% */
-    KeepAlive(i32),                                   // CH
+    ClientVersion(u32, String, String),          // ID#<pv:u32>#<software:String>#<version:String>#%
+    KeepAlive(i32),                              // CH#<ignored_i:i32>#%
     AskListLengths,                              // askchaa
     AskListCharacters,                           // askchar
     CharacterList(u32),                          // AN#<page:u32>#%
@@ -20,24 +19,17 @@ pub enum ClientCommand {
     AO2CharacterList,                            // AC#%
     AO2MusicList,                                // AM#%
     AO2Ready,                                    // RD#%
-    SelectCharacter(u32, u32, String),           /* CC<client_id:u32>#
-                                                  * <char_id:u32#<hdid:
-                                                  * String>#% */
+    SelectCharacter(u32, u32, String),           // CC<client_id:u32>#<char_id:u32#<hdid:String>#%
     ICMessage,                                   // MS
-    OOCMessage(String, String),                  /* CT#<name:String>#
-                                                  * <message:String>#% */
+    OOCMessage(String, String),                  // CT#<name:String>#<message:String>#%
     PlaySong(u32, u32),                          // MC#<song_name:u32>#<???:u32>#%
     WTCEButtons(String),                         // RT#<type:String>#%
-    SetCasePreferences(String, CasePreferences), /* SETCASE#<cases:String>#<will_cm:boolean>#<will_def:boolean>#<will_pro:boolean>#<will_judge:boolean>#<will_jury:boolean>#<will_steno:boolean>#% */
+    SetCasePreferences(String, CasePreferences), // SETCASE#<cases:String>#<will_cm:boolean>#<will_def:boolean>#<will_pro:boolean>#<will_judge:boolean>#<will_jury:boolean>#<will_steno:boolean>#%
     CaseAnnounce(String, CasePreferences),       // CASEA
-    Penalties(u32, u32),                         /* HP#<type:u32>#
-                                                  * <new_value:u32>#% */
-    AddEvidence(EvidenceArgs),                   /* PE#<name:String>#<description:String>#
-                                                  * <image:String>#% */
+    Penalties(u32, u32),                         // HP#<type:u32>#<new_value:u32>#%
+    AddEvidence(EvidenceArgs),                   // PE#<name:String>#<description:String>#<image:String>#%
     DeleteEvidence(u32),                         // DE#<id:u32>#%
-    EditEvidence(u32, EvidenceArgs),             /* EE#<id:u32>#<name:String>#
-                                                  * <description:String>#<image:
-                                                  * String>#% */
+    EditEvidence(u32, EvidenceArgs),             // EE#<id:u32>#<name:String>#<description:String>#<image:String>#%
     CallModButton(Option<String>),               // ZZ?#<reason:String>?#%
 }
 
