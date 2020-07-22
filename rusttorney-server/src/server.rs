@@ -12,7 +12,6 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio_postgres::NoTls;
 use tokio_util::codec::{Decoder, Framed};
 
-
 pub struct AOServer<'a> {
     config: &'a Config<'a>,
     db_pool: Pool<PostgresConnectionManager<NoTls>>,
