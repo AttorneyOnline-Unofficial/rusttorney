@@ -14,7 +14,7 @@ pub enum ClientCommand {
     ClientVersion(u32, String, String),          /* ID#<pv:u32>#<software:String>#
                                                   * <version:String>#% */
     #[command(code = "CH")]
-    KeepAlive,                                   // CH
+    KeepAlive(i32),                              // CH
     #[command(code = "askchaa")]
     AskListLengths,                              // askchaa
     #[command(code = "askchar")]
@@ -90,5 +90,15 @@ pub struct CasePreferences {
 #[derive(Debug, Command)]
 pub enum ServerCommand {
     #[command(code = "HI")]
-    Handshake(String)
+    Handshake(String),                  // HI#<hdid:String>#%
+    #[command(code = "CHECK")]
+    KeepAlive,                          // CHECK#%
+    #[command(code = "decryptor")]
+    Decryptor(u32),                     // decryptor#<i:u32>#%
+    #[command(code = "BD")]
+    BanReason(String),                  // BD#<reason:String>#%,
+    #[command(code = "ID")]
+    ServerVersion(u8, String, String),  // ID#<client_id:u32>#<software:String>#<version:String>#%
+    #[command(code = "PN")]
+    PlayerCount(u8, u8),                // PN#<player_count:u8>#<max_players:u8>#%
 }
