@@ -1,8 +1,8 @@
 use darling::{ast::Data, FromDeriveInput, FromMeta};
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{quote, format_ident};
-use syn::{parse_macro_input, DeriveInput, Ident, Fields, Member, Variant};
+use quote::{format_ident, quote};
+use syn::{parse_macro_input, DeriveInput, Fields, Ident, Member, Variant};
 
 #[derive(FromDeriveInput)]
 #[darling(attributes(command))]
@@ -13,12 +13,13 @@ struct CommandOps {
 
 #[derive(FromMeta)]
 struct VariantCode {
-    code: String
+    code: String,
 }
 
 #[derive(FromMeta)]
 struct VariantSkip {
-    skip: ()
+    #[darling(rename = "skip")]
+    _skip: (),
 }
 
 #[proc_macro_derive(Command, attributes(command))]
@@ -38,15 +39,24 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
     let mut named_fields = Vec::with_capacity(vars.len());
     let mut idx_fields = Vec::with_capacity(vars.len());
     for var in vars {
-        let Variant { attrs, ident, fields, .. } = var;
+        let Variant {
+            attrs,
+            ident,
+            fields,
+            ..
+        } = var;
         let metas: Vec<_> = attrs
             .into_iter()
             .filter_map(|attr| attr.parse_meta().ok())
             .collect();
-        if metas.iter().any(|meta| VariantSkip::from_meta(&meta).is_ok()) {
+        if metas
+            .iter()
+            .any(|meta| VariantSkip::from_meta(&meta).is_ok())
+        {
             continue;
         }
-        let mut codes_iter = metas.into_iter()
+        let mut codes_iter = metas
+            .into_iter()
             .filter_map(|meta| VariantCode::from_meta(&meta).ok())
             .fuse();
         let code = match (codes_iter.next(), codes_iter.next()) {
@@ -63,36 +73,40 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
         };
         let (named_fields_piece, idx_fields_piece, pattern) = match fields {
             Fields::Named(named) => {
-                let named_iter: Vec<_> = named.named
+                let named_iter: Vec<_> = named
+                    .named
                     .into_iter()
                     .map(|field| field.ident.expect("Variant is guaranteed to be named"))
                     .collect();
-                let idx_fields_piece: Vec<_> = named_iter
-                    .iter().cloned()
-                    .map(|ident| Member::Named(ident))
-                    .collect();
-                let pattern: TokenStream2 = quote!{
+                let idx_fields_piece: Vec<_> =
+                    named_iter.iter().cloned().map(Member::Named).collect();
+                let pattern: TokenStream2 = quote! {
                     #ident {#(
                         #named_iter,
                     )*}
                 };
                 (named_iter, idx_fields_piece, pattern)
-            },
+            }
             Fields::Unnamed(unnamed) => {
-                let named_fields_piece: Vec<_> = unnamed.unnamed.iter().cloned()
+                let named_fields_piece: Vec<_> = unnamed
+                    .unnamed
+                    .iter()
+                    .cloned()
                     .enumerate()
                     .map(|(i, _)| format_ident!("x{}", i))
                     .collect();
-                let idx_fields_piece: Vec<_> = unnamed.unnamed.into_iter()
+                let idx_fields_piece: Vec<_> = unnamed
+                    .unnamed
+                    .into_iter()
                     .enumerate()
                     .map(|(i, _)| Member::Unnamed(i.into()))
                     .collect();
-                let pattern: TokenStream2 = quote!{
+                let pattern: TokenStream2 = quote! {
                     #ident ( #(#named_fields_piece,)* )
                 };
                 (named_fields_piece, idx_fields_piece, pattern)
             }
-            Fields::Unit => (vec![], vec![], (quote!{ #ident }).into())
+            Fields::Unit => (vec![], vec![], quote! { #ident }),
         };
         var_idents.push(ident);
         codes.push(code);
