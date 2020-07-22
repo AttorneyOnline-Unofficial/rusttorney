@@ -60,7 +60,7 @@ pub enum MasterServerCommand {
         }
     }
 
-    fn extract_args(&self) -> Vec<&str> {
+    fn extract_args(&self) -> Vec<String> {
         Vec::new() // while we no commands with arguments
     }
 }*/

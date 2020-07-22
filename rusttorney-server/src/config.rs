@@ -18,6 +18,7 @@ pub struct Config<'a> {
 #[derive(Debug, Deserialize)]
 pub struct GeneralConfig<'a> {
     pub hostname: &'a str,
+    pub host: &'a str,
     pub playerlimit: u8,
     pub port: u32,
     pub local: bool,
@@ -59,6 +60,7 @@ mod tests {
 
         [general]
         hostname = "<dollar>H"
+        host = "0.0.0.0"
         playerlimit = 100
         port = 27016
         local = false
