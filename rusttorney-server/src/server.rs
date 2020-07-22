@@ -192,13 +192,10 @@ impl<'a> AOServer<'a> {
                     timeout_tx,
                 );
 
-                match handler
+                handler
                     .start_handling(timeout_rx)
                     .await
-                    .map_err(|e| log::error!("{}", e))
-                {
-                    _ => (),
-                }
+                    .map_err(|e| log::error!("{}", e));
             });
         }
     }
