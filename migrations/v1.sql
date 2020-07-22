@@ -2,7 +2,7 @@
 -- When deleting an IPID, all bans and logs entries containing that
 -- IPID will also be deleted to fully erase the identity of a player.
 CREATE TABLE IF NOT EXISTS ipids(
-	ipid INTEGER PRIMARY KEY,
+	ipid SERIAL PRIMARY KEY,
 	ip_address TEXT UNIQUE NOT NULL
 );
 
@@ -16,10 +16,10 @@ CREATE TABLE IF NOT EXISTS hdids(
 
 CREATE TABLE IF NOT EXISTS bans(
    ban_id INTEGER PRIMARY KEY,
-   ban_date date DEFAULT CURRENT_TIMESTAMP,
-   unban_date date,
+   ban_DATE DATE DEFAULT CURRENT_TIMESTAMP,
+   unban_DATE DATE,
    banned_by INTEGER,
-   reason text,
+   reason TEXT,
    FOREIGN KEY (banned_by) REFERENCES ipids(ipid)
        ON DELETE SET NULL
 );
@@ -44,19 +44,19 @@ CREATE TABLE IF NOT EXISTS hdid_bans(
 );
 
 CREATE TABLE IF NOT EXISTS ic_events(
-	event_time date DEFAULT CURRENT_TIMESTAMP,
-	ipid integer NOT NULL,
-	room_name text,
-	char_name text,
-	ic_name text,
-	message text NOT NULL,
+	event_time DATE DEFAULT CURRENT_TIMESTAMP,
+	ipid INTEGER NOT NULL,
+	room_name TEXT,
+	char_name TEXT,
+	ic_name TEXT,
+	message TEXT NOT NULL,
 	FOREIGN KEY (ipid) REFERENCES ipids(ipid)
 		ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS room_event_types(
-	type_id integer PRIMARY KEY,
-	type_name text NOT NULL UNIQUE
+	type_id INTEGER PRIMARY KEY,
+	type_name INTEGER NOT NULL UNIQUE
 );
 
 /*
@@ -79,15 +79,15 @@ INSERT INTO room_event_types(type_name) VALUES
 
 -- Useful for RP events and announcements, not just chat
 CREATE TABLE IF NOT EXISTS room_events(
-	event_id integer PRIMARY KEY,
-	event_time date DEFAULT CURRENT_TIMESTAMP,
-	ipid integer NOT NULL,
-	target_ipid integer,
-	room_name text,
-	char_name text,
-	ooc_name text,
-	event_subtype integer NOT NULL,
-	message text,
+	event_id INTEGER PRIMARY KEY,
+	event_time DATE DEFAULT CURRENT_TIMESTAMP,
+	ipid INTEGER NOT NULL,
+	target_ipid INTEGER,
+	room_name TEXT,
+	char_name TEXT,
+	ooc_name TEXT,
+	event_subtype INTEGER NOT NULL,
+	message TEXT,
 	FOREIGN KEY (ipid) REFERENCES ipids(ipid)
 		ON DELETE CASCADE,
 	FOREIGN KEY (target_ipid) REFERENCES ipids(ipid)
@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS room_events(
 
 -- `profile_name` is NULL if the login attempt failed
 CREATE TABLE IF NOT EXISTS login_events(
-	event_time date DEFAULT CURRENT_TIMESTAMP,
+	event_time DATE DEFAULT CURRENT_TIMESTAMP,
 	ipid INTEGER NOT NULL,
 	profile_name TEXT,
 	FOREIGN KEY (ipid) REFERENCES ipids(ipid)
@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS login_events(
 );
 
 CREATE TABLE IF NOT EXISTS connect_events(
-	event_time date DEFAULT CURRENT_TIMESTAMP,
+	event_time DATE DEFAULT CURRENT_TIMESTAMP,
 	ipid INTEGER NOT NULL,
 	hdid TEXT NOT NULL,
 	failed INTEGER DEFAULT 0,
@@ -128,7 +128,7 @@ INSERT INTO misc_event_types(type_name) VALUES
 
 -- Useful for system, admin, and user-defined events
 CREATE TABLE IF NOT EXISTS misc_events(
-	event_time date DEFAULT CURRENT_TIMESTAMP,
+	event_time DATE DEFAULT CURRENT_TIMESTAMP,
 	ipid INTEGER,
 	target_ipid INTEGER,
 	event_subtype INTEGER NOT NULL,
@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS misc_events(
 );
 
 CREATE TABLE IF NOT EXISTS general_info(
-    db_version integer NOT NULL
+    db_version INTEGER NOT NULL
 );
 
 INSERT INTO general_info (db_version) VALUES (1);
