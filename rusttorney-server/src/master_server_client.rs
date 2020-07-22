@@ -13,15 +13,18 @@ use tokio::macros::support::Poll;
 use tokio::net::TcpStream;
 use tokio::stream::{Stream, StreamExt};
 
-#[derive(Debug)]
+#[derive(Debug, Command)]
 pub enum MasterServerCommand {
+    #[command(code = "CHECK")]
     Check,
+    #[command(code = "PONG")]
     Pong,
+    #[command(code = "NOSERV")]
     NOSERV,
-    Other(String), // TODO: discuss why this exists
+    // Other(String), // TODO: discuss why this exists
 }
 
-impl Command for MasterServerCommand {
+/*impl Command for MasterServerCommand {
     fn from_protocol(
         name: String,
         mut args: impl Iterator<Item = String>,
@@ -60,7 +63,7 @@ impl Command for MasterServerCommand {
     fn extract_args(&self) -> Vec<&str> {
         Vec::new() // while we no commands with arguments
     }
-}
+}*/
 
 pub trait CommandReader:
     Stream<Item = Result<MasterServerCommand, tokio::io::Error>>
@@ -151,8 +154,7 @@ where
                 }
                 MasterServerCommand::NOSERV => {
                     self.send_message(self.pack_server_info()).await?;
-                }
-                MasterServerCommand::Other(_mes) => { /* TODO: log this */ }
+                } // MasterServerCommand::Other(_mes) => { /* TODO: log this */ }
             }
         }
     }

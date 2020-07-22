@@ -1,9 +1,10 @@
 pub use command_derive_impl::*;
 
 pub trait Command: Sized {
-    fn from_protocol<I>(code: &str, args: I) -> Result<Self, anyhow::Error>
+    fn from_protocol<I, S>(code: &str, args: I) -> Result<Self, anyhow::Error>
     where
-        I: Iterator<Item = String>;
+        I: Iterator<Item = S>,
+        S: AsRef<str>;
 
     fn ident(&self) -> &str;
 

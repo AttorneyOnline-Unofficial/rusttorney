@@ -73,7 +73,7 @@ impl Decoder for AOMessageCodec {
         let args_iter =
             msg.as_ref().split(|&c| c == ARG_SEP).skip(1).map(ignore_ill_utf8);
 
-        Ok(Some(ClientCommand::from_protocol(cmd, args_iter)?))
+        Ok(Some(ClientCommand::from_protocol(&cmd, args_iter)?))
     }
 
     fn decode_eof(

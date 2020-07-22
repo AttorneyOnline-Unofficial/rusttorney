@@ -134,13 +134,17 @@ impl ::command_derive::Command for #enum_ident {
         }
     }
 
-    fn from_protocol<I>(code: &str, args: I) -> Result<Self, ::anyhow::Error> where I: Iterator<Item = String> {
+    fn from_protocol<I, S>(code: &str, args: I) -> Result<Self, ::anyhow::Error>
+    where
+        I: Iterator<Item = S>,
+        S: AsRef<str>
+    {
         let mut args = args.map(Ok).chain(::std::iter::from_fn(|| Some(Err(::anyhow::anyhow!("Not enough args")))));
 
         let res = match code {
             #(
                 #codes => #enum_ident::#var_idents{#(
-                    #idx_fields: args.next().unwrap()?.parse().map_err(|e| ::anyhow::anyhow!("{}", e))?,
+                    #idx_fields: args.next().unwrap()?.as_ref().parse().map_err(|e| ::anyhow::anyhow!("{}", e))?,
                 )*},
             )*
             code => return Err(::anyhow::anyhow!("Unknown command code: {}", code))
