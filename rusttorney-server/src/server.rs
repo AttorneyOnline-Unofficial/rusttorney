@@ -73,11 +73,8 @@ impl<'a> AO2MessageHandler<'a> {
             }
         });
 
-        let client = client_manager
-            .lock()
-            .await
-            .new_client(&mut socket, ip)
-            .await?;
+        let client =
+            client_manager.lock().await.new_client(&mut socket, ip).await?;
         log::info!(
             "Client with IPID: {} connected! His ip is: {}",
             &client.ipid,
