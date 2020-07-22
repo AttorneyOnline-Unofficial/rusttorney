@@ -9,12 +9,12 @@ use futures::{SinkExt, StreamExt};
 use std::sync::{Arc, Mutex};
 use tokio::net::{TcpListener, TcpStream};
 
-use tokio_util::codec::{Decoder, Framed};
-use tokio::time::Duration;
-use tokio::select;
-use futures::channel::oneshot::{Receiver, channel, Sender};
-use std::ops::Deref;
+use futures::channel::oneshot::{channel, Receiver, Sender};
 use std::convert::Infallible;
+use std::ops::Deref;
+use tokio::select;
+use tokio::time::Duration;
+use tokio_util::codec::{Decoder, Framed};
 
 pub struct AOServer<'a> {
     config: &'a Config<'a>,
@@ -35,13 +35,14 @@ impl AO2MessageHandler {
         socket: Framed<TcpStream, AOMessageCodec>,
         db: DbWrapper,
         client_manager: Arc<Mutex<ClientManager>>,
-        timeout: u64
+        timeout: u64,
     ) -> Self {
         let (timeout_tx, timeout_rx) = channel();
         let (ch_tx, mut ch_rx) = futures::channel::mpsc::channel(1);
 
         tokio::spawn(async move {
-            let mut delay = tokio::time::delay_for(Duration::from_millis(timeout));
+            let mut delay =
+                tokio::time::delay_for(Duration::from_millis(timeout));
 
             loop {
                 select! {
@@ -72,7 +73,7 @@ impl AO2MessageHandler {
                 drop(conn);
                 log::debug!("Handshake from HDID: {}", hdid);
                 self.handle_handshake(hdid).await
-            },
+            }
             ClientCommand::KeepAlive(_) => {
                 log::debug!("Got CH (KeepAlive)");
                 self.handle_keepalive().await
@@ -102,7 +103,7 @@ impl AO2MessageHandler {
             match res {
                 Ok(msg) => {
                     self.handle(msg).await?;
-                },
+                }
                 Err(e) => {
                     log::error!("Got error {:?}", e);
                 }
@@ -182,8 +183,7 @@ impl<'a> AOServer<'a> {
             let timeout = self.config.timeout as u64;
 
             tokio::spawn(async move {
-                let framed =
-                    AOMessageCodec.framed(socket);
+                let framed = AOMessageCodec.framed(socket);
 
                 let mut handler =
                     AO2MessageHandler::new(framed, db, client_manager, 5000);

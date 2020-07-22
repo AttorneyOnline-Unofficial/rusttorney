@@ -138,7 +138,7 @@ impl Command for ServerCommand {
 
         match self {
             Handshake(_) => "HI",
-            KeepAlive => "CHECK"
+            KeepAlive => "CHECK",
         }
     }
 
