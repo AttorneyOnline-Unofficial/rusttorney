@@ -2,7 +2,7 @@
 -- When deleting an IPID, all bans and logs entries containing that
 -- IPID will also be deleted to fully erase the identity of a player.
 CREATE TABLE IF NOT EXISTS ipids(
-	ipid bigserial PRIMARY KEY,
+	ipid serial PRIMARY KEY,
 	ip_address TEXT UNIQUE NOT NULL
 );
 

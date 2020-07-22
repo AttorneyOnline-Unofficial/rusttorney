@@ -67,8 +67,6 @@ impl Decoder for AOMessageCodec {
         let cmd_raw = msg.split_to(cmd_end);
         let cmd = ignore_ill_utf8(&cmd_raw[..]);
 
-        log::info!("Command is {:?}", &cmd);
-
         // Divide rest of the message into chunks.
         // If there are any arguments in the slice, it starts with '#'.
         // `.skip(1)` ignores the empty string appearing because of it

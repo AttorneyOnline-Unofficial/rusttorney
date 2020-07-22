@@ -27,7 +27,7 @@ impl DbWrapper {
         Self { db_pool }
     }
 
-    pub async fn ipid(&self, ip: IpAddr) -> Result<i64, anyhow::Error> {
+    pub async fn ipid(&self, ip: IpAddr) -> Result<i32, anyhow::Error> {
         let ip_str = ip.to_string();
         let mut conn = self.get().await?;
         {
@@ -41,6 +41,19 @@ impl DbWrapper {
                 &[&ip_str],
             )
             .await?;
-        Ok(ipid.get::<_, i64>(0_usize))
+        Ok(ipid.get::<_, i32>(0_usize))
+    }
+
+    pub async fn add_hdid(
+        &mut self,
+        hdid: String,
+        ipid: u32,
+    ) -> Result<(), anyhow::Error> {
+        let mut conn = self.get().await?;
+        let tx = conn.transaction().await?;
+        let ipid = ipid as i32;
+
+        tx.execute("INSERT INTO hdids (hdid, ipid) VALUES ($1, $2) ON CONFLICT DO NOTHING", &[&hdid, &ipid]).await?;
+        tx.commit().await.map_err(|e| e.into())
     }
 }

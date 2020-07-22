@@ -1,7 +1,7 @@
 -- Remove PRIMARY KEY constraint from `hdid`
 CREATE TABLE IF NOT EXISTS hdids_new (
 	hdid TEXT,
-	ipid INTEGER NOT NULL,
+	ipid int NOT NULL,
 	FOREIGN KEY (ipid) REFERENCES ipids(ipid)
 		ON DELETE SET NULL,
 	UNIQUE (hdid, ipid)
