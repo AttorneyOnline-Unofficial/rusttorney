@@ -11,8 +11,14 @@ enum ClientRequest {
     Handshake2(String),
     /// Sent as answer to server's "Ping"
     #[command(code = "PONG")]
-    Pong
+    Pong,
+    // #[command(code = "ANOTHER")]
+    #[command(skip)]
+    Another(Nested)
 }
+
+#[derive(Debug, PartialEq)]
+struct Nested(i32, i32);
 
 fn main() {
     let (code, args) = ("HI", vec!["hdid".to_string()]);

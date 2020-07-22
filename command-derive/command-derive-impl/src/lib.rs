@@ -4,16 +4,21 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::{quote, format_ident};
 use syn::{parse_macro_input, DeriveInput, Ident, Fields, Member, Variant};
 
-#[derive(Debug, FromDeriveInput)]
+#[derive(FromDeriveInput)]
 #[darling(attributes(command))]
 struct CommandOps {
     ident: Ident,
     data: Data<Variant, ()>,
 }
 
-#[derive(Debug, FromMeta)]
+#[derive(FromMeta)]
 struct VariantCode {
-    code: String,
+    code: String
+}
+
+#[derive(FromMeta)]
+struct VariantSkip {
+    skip: ()
 }
 
 #[proc_macro_derive(Command, attributes(command))]
@@ -34,9 +39,14 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
     let mut idx_fields = Vec::with_capacity(vars.len());
     for var in vars {
         let Variant { attrs, ident, fields, .. } = var;
-        let mut codes_iter = attrs
-            .iter()
+        let metas: Vec<_> = attrs
+            .into_iter()
             .filter_map(|attr| attr.parse_meta().ok())
+            .collect();
+        if metas.iter().any(|meta| VariantSkip::from_meta(&meta).is_ok()) {
+            continue;
+        }
+        let mut codes_iter = metas.into_iter()
             .filter_map(|meta| VariantCode::from_meta(&meta).ok())
             .fuse();
         let code = match (codes_iter.next(), codes_iter.next()) {
@@ -97,6 +107,7 @@ impl ::command_derive::Command for #enum_ident {
             #(
                 #enum_ident::#var_idents { .. } => #codes,
             )*
+                _ => panic!("`ident()` on skipped variant")
         }
     }
 
@@ -105,6 +116,7 @@ impl ::command_derive::Command for #enum_ident {
             #(
                 #enum_ident::#patterns => vec![#(#named_fields.to_string(),)*],
             )*
+                _ => panic!("`extract_args()` on skipped variant")
         }
     }
 
@@ -119,8 +131,9 @@ impl ::command_derive::Command for #enum_ident {
             )*
             code => return Err(::anyhow::anyhow!("Unknown command code: {}", code))
         };
+        // FIX: don't allocate any errors, when everything is ok
         if args.next().unwrap().is_ok() {
-            return Err(::anyhow::anyhow!("Too much args"));
+            return Err(::anyhow::anyhow!("Too many args"));
         }
         Ok(res)
     }
