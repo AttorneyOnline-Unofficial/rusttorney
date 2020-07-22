@@ -60,6 +60,7 @@ mod tests {
 
         [general]
         hostname = "<dollar>H"
+        host = "0.0.0.0"
         playerlimit = 100
         port = 27016
         local = false
