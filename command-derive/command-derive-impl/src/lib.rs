@@ -51,7 +51,7 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
             .collect();
         if metas
             .iter()
-            .any(|meta| VariantSkip::from_meta(&meta).is_ok())
+            .any(|meta| VariantSkip::from_meta(meta).is_ok())
         {
             continue;
         }
