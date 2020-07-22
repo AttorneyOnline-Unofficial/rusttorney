@@ -181,6 +181,7 @@ impl<'a> AOServer<'a> {
     }
 
     async fn migrate(&mut self) -> anyhow::Result<()> {
+        log::debug!("Getting pool connection for migration...");
         let mut conn = self.db.get().await?;
         let stmt = conn.prepare("SELECT db_version FROM general_info").await;
 
@@ -221,10 +222,11 @@ impl<'a> AOServer<'a> {
     pub async fn run(&mut self) -> anyhow::Result<()> {
         use futures::StreamExt;
 
+        log::debug!("Beginning migration...");
         self.migrate().await?;
 
         log::info!("Starting up the server...");
-        let addr = format!("127.0.0.1:{}", self.config.general.port);
+        let addr = format!("0.0.0.0:{}", self.config.general.port);
         log::info!("Binding to address: {}", &addr);
 
         let mut listener = TcpListener::bind(addr).await?;

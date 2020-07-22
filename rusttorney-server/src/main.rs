@@ -1,6 +1,5 @@
 #![allow(unused)]
-use bb8::Pool;
-use bb8_postgres::PostgresConnectionManager;
+use deadpool_postgres::{Config as PgConfig, Manager, ManagerConfig, Pool, RecyclingMethod };
 use env_logger::Env;
 use log::LevelFilter;
 use rusttorney_server::client_manager::ClientManager;
@@ -10,7 +9,6 @@ use rusttorney_server::{config::Config, server::AOServer};
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
-use tokio_postgres::Config as PgConfig;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -37,11 +35,14 @@ async fn main() -> anyhow::Result<()> {
     //     master_server.connection_loop().await.expect("MS connection loop panicked!");
     // });
 
-    let pg_config =
-        PgConfig::from_str("postgresql://postgres@localhost:5432/rusttorney")?;
-    let pg_mgr =
-        PostgresConnectionManager::new(pg_config, tokio_postgres::NoTls);
-    let db = DbWrapper::new(Pool::builder().build(pg_mgr).await?);
+    let mut pg_config = PgConfig::new();
+    pg_config.dbname = Some("rusttorney".into());
+    pg_config.user = Some("postgres".into());
+    pg_config.manager = Some(ManagerConfig { recycling_method: RecyclingMethod::Fast });
+
+    let pool = pg_config.create_pool(tokio_postgres::NoTls)?;
+
+    let db = DbWrapper::new(pool);
 
     AOServer::new(&config, db)?.run().await
 }
