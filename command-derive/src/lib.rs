@@ -1,4 +1,4 @@
-pub use command_derive_impl::*;
+pub use command_derive_impl::{Command, FromStrIter};
 
 pub trait Command: Sized {
     fn from_protocol<I, S>(code: &str, args: I) -> Result<Self, anyhow::Error>

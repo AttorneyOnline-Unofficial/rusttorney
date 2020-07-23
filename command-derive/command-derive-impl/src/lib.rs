@@ -3,83 +3,11 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote};
 use core::convert::TryFrom;
 use syn::{
-    Fields, Member, Meta, ItemEnum, ItemStruct, NestedMeta, parse_macro_input, Variant,
-    // parse::{self, Parse, ParseStream}
+    Fields, Member, ItemEnum, ItemStruct, parse_macro_input, Variant,
 };
 
-struct VariantCode {
-    code: String,
-}
-
-enum ParseErr {
-    Fatal(&'static str),
-    Ignore
-}
-
-impl TryFrom<&syn::Meta> for VariantCode {
-    type Error = ParseErr;
-
-    fn try_from(value: &syn::Meta) -> Result<Self, Self::Error> {
-        let meta_list = match *value {
-            Meta::List(ref meta_list) => meta_list,
-            _ => return Err(ParseErr::Ignore)
-        };
-        let syn::MetaList {
-            ref path,
-            ref nested,
-            ..
-        } = *meta_list;
-        if !path.is_ident("command") {
-            return Err(ParseErr::Ignore);
-        }
-        let mut nested_it = nested.iter().fuse();
-        let code = match (nested_it.next(), nested_it.next()) {
-            (Some(NestedMeta::Meta(Meta::NameValue(name_val))), None) => {
-                if !name_val.path.is_ident("code") {
-                    return Err(ParseErr::Ignore)
-                }
-                match name_val.lit {
-                    syn::Lit::Str(ref s) => s.value(),
-                    _ => return Err(ParseErr::Fatal(
-                        r#"Only string literal allowed as value in #[command(code = "LIT")]"#
-                    )),
-                }
-            },
-            _ => return Err(ParseErr::Ignore)
-        };
-        Ok(VariantCode { code })
-    }
-}
-
-// Validates this: `#[command(skip)]`
-struct VariantSkip;
-
-impl TryFrom<&syn::Meta> for VariantSkip {
-    type Error = ();
-
-    fn try_from(value: &syn::Meta) -> Result<Self, Self::Error> {
-        let meta_list = match *value {
-            Meta::List(ref meta_list) => meta_list,
-            _ => return Err(())
-        };
-        let syn::MetaList {
-            ref path,
-            ref nested,
-            ..
-        } = *meta_list;
-        if !path.is_ident("command") {
-            return Err(());
-        }
-        let mut nested_it = nested.iter().fuse();
-        match (nested_it.next(), nested_it.next()) {
-            (Some(NestedMeta::Meta(Meta::Path(path))), None) => if !path.is_ident("skip") {
-                return Err(())
-            },
-            _ => return Err(())
-        }
-        Ok(Self)
-    }
-}
+mod helpers;
+use helpers::{ParseErr, VariantCode, VariantSkip};
 
 #[proc_macro_derive(Command, attributes(command))]
 pub fn command_derive(input: TokenStream) -> TokenStream {
