@@ -5,4 +5,5 @@ fn tests() {
     t.compile_fail("tests/02-reject-struct.rs");
     t.compile_fail("tests/03-reject-no-code.rs");
     t.compile_fail("tests/04-fromstriter-reject-enum.rs");
+    t.pass("tests/05-accept-fromstriter-both-named-and-unnamed.rs");
 }

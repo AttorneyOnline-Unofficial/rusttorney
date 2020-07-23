@@ -20,22 +20,6 @@ enum ClientRequest {
 #[derive(Debug, FromStrIter, PartialEq)]
 struct Nested(i32, i32);
 
-/*impl FromStrIter for Nested {
-    type Error = ::anyhow::Error;
-
-    fn from_str_iter<I, S>(mut it: I) -> Result<Nested, ::anyhow::Error>
-    where
-        S: AsRef<str>,
-        I: Iterator<Item=S>
-    {
-        let on_err = || ::anyhow::anyhow!("Not enough args");
-        Ok(Nested(
-            it.next().ok_or_else(on_err)?.as_ref().parse().map_err(|e| ::anyhow::anyhow!("{}", e))?,
-            it.next().ok_or_else(on_err)?.as_ref().parse().map_err(|e| ::anyhow::anyhow!("{}", e))?
-        ))
-    }
-}*/
-
 fn main() {
     assert_eq!(Nested(42, 36), Nested::from_str_iter(vec!["42", "36"].into_iter()).unwrap());
     assert!(Nested::from_str_iter(vec!["42", "kek"].into_iter()).is_err());
