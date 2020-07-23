@@ -1,6 +1,6 @@
 use command_derive::*;
 
-#[derive(FromStrIter)]
+#[derive(WithStrIter)]
 enum Handshake {
     One,
     Two,

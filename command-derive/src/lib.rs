@@ -1,4 +1,4 @@
-pub use command_derive_impl::{Command, FromStrIter, IntoStrIter};
+pub use command_derive_impl::{Command, WithStrIter};
 
 pub trait Command: Sized {
     fn from_protocol<I, S>(code: &str, args: I) -> Result<Self, anyhow::Error>
@@ -28,5 +28,5 @@ pub trait FromStrIter: Sized {
     fn from_str_iter<I, S>(it: I) -> Result<Self, Self::Error>
     where
         S: AsRef<str>,
-        I: Iterator<Item=S>;
+        I: Iterator<Item = S>;
 }
