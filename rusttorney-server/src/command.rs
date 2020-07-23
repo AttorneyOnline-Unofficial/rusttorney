@@ -1,4 +1,4 @@
-use crate::networking::Command;
+use crate::networking::{Command, WithStrIter};
 
 use std::{
     fmt::{Debug, Display},
@@ -44,24 +44,24 @@ pub enum ClientCommand {
     PlaySong(u32, u32),                          // MC#<song_name:u32>#<???:u32>#%
     #[command(code = "RT")]
     WTCEButtons(String),                         // RT#<type:String>#%
-    #[command(skip)]
+    // #[command(skip)]
     #[command(code = "SETCASE")]
-    SetCasePreferences(String, CasePreferences), /* SETCASE#<cases:String>#<will_cm:boolean>#<will_def:boolean>#<will_pro:boolean>#<will_judge:boolean>#<will_jury:boolean>#<will_steno:boolean>#% */
-    #[command(skip)]
+    SetCasePreferences(String, #[command(flatten)] CasePreferences), /* SETCASE#<cases:String>#<will_cm:boolean>#<will_def:boolean>#<will_pro:boolean>#<will_judge:boolean>#<will_jury:boolean>#<will_steno:boolean>#% */
+    // #[command(skip)]
     #[command(code = "CASEA")]
-    CaseAnnounce(String, CasePreferences),       // CASEA
+    CaseAnnounce(String, #[command(flatten)] CasePreferences),       // CASEA
     #[command(code = "HP")]
     Penalties(u32, u32),                         /* HP#<type:u32>#
                                                   * <new_value:u32>#% */
-    #[command(skip)]
+    // #[command(skip)]
     #[command(code = "PE")]
-    AddEvidence(EvidenceArgs),                   /* PE#<name:String>#<description:String>#
+    AddEvidence(#[command(flatten)] EvidenceArgs),                   /* PE#<name:String>#<description:String>#
                                                   * <image:String>#% */
     #[command(code = "DE")]
     DeleteEvidence(u32),                         // DE#<id:u32>#%
-    #[command(skip)]
+    // #[command(skip)]
     #[command(code = "EE")]
-    EditEvidence(u32, EvidenceArgs),             /* EE#<id:u32>#<name:String>#
+    EditEvidence(u32, #[command(flatten)] EvidenceArgs),             /* EE#<id:u32>#<name:String>#
                                                   * <description:String>#<image:
                                                   * String>#% */
     #[command(skip)]
@@ -69,14 +69,14 @@ pub enum ClientCommand {
     CallModButton(Option<String>),               // ZZ?#<reason:String>?#%
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, WithStrIter)]
 pub struct EvidenceArgs {
     pub name: String,
     pub description: String,
     pub image: String,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, WithStrIter)]
 pub struct CasePreferences {
     pub cm: bool,
     pub def: bool,
