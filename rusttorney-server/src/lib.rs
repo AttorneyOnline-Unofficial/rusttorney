@@ -15,7 +15,7 @@ fn prompt(text: &str) -> bool {
     let mut stdin = stdin();
 
     loop {
-        log::warn!("{}", text);
+        log::warn!("{} [Y/n]", text);
         answer.clear();
         stdin.lock().read_line(&mut answer);
 
