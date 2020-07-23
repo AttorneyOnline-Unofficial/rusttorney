@@ -34,7 +34,7 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
             .iter()
             .any(|meta| CommandMarker("skip").validate(meta).is_ok())
         {
-            continue;
+            return str_as_compile_error("#[command(skip)] was hard-deprecated, sorry");
         }
         let parse_codes: Vec<_> = metas
             .into_iter()
@@ -141,7 +141,6 @@ impl ::command_derive::Command for #enum_ident {
             #(
                 #enum_ident::#var_idents { .. } => #codes,
             )*
-                _ => panic!("`ident()` on skipped variant")
         }
     }
 
@@ -155,7 +154,6 @@ impl ::command_derive::Command for #enum_ident {
                     #(#named_fields_to_str;)*
                 },
             )*
-                _ => panic!("`extract_args()` on skipped variant")
         }
         res
     }
