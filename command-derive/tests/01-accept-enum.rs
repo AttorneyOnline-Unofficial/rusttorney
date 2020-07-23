@@ -11,10 +11,7 @@ enum ClientRequest {
     Handshake2(String),
     /// Sent as answer to server's "Ping"
     #[command(code = "PONG")]
-    Pong,
-    #[command(skip)]
-    #[command(code = "ANOTHER")]
-    Another(#[command(flatten)] Nested)
+    Pong
 }
 
 #[derive(Debug, WithStrIter, PartialEq)]
