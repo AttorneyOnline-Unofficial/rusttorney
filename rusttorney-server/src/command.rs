@@ -64,9 +64,8 @@ pub enum ClientCommand {
     EditEvidence(u32, EvidenceArgs),             /* EE#<id:u32>#<name:String>#
                                                   * <description:String>#<image:
                                                   * String>#% */
-    #[command(skip)]
     #[command(code = "ZZ")]
-    CallModButton(Option<String>),               // ZZ?#<reason:String>?#%
+    CallModButton(String),                       // ZZ?#<reason:String>?#%
 }
 
 #[derive(Debug, PartialEq)]

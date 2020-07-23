@@ -12,13 +12,13 @@ use tokio::net::{TcpListener, TcpStream};
 use crate::prompt;
 use futures::channel::mpsc;
 use futures::channel::oneshot::{channel, Receiver, Sender};
-use futures::lock::Mutex;
 use std::convert::Infallible;
 use std::io::{stdin, Read};
 use std::net::IpAddr;
 use std::ops::Deref;
 use std::path::PathBuf;
 use tokio::select;
+use tokio::sync::Mutex;
 use tokio::time::Duration;
 use tokio_util::codec::{Decoder, Framed};
 
