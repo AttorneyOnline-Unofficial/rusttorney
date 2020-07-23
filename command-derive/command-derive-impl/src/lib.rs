@@ -1,18 +1,84 @@
-use darling::FromMeta;
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote};
-use syn::{Fields, Member, ItemEnum, ItemStruct, parse_macro_input, Variant};
+use core::convert::TryFrom;
+use syn::{
+    Fields, Member, Meta, ItemEnum, ItemStruct, NestedMeta, parse_macro_input, Variant,
+    // parse::{self, Parse, ParseStream}
+};
 
-#[derive(FromMeta)]
 struct VariantCode {
     code: String,
 }
 
-#[derive(FromMeta)]
-struct VariantSkip {
-    #[darling(rename = "skip")]
-    _skip: (),
+enum ParseErr {
+    Fatal(&'static str),
+    Ignore
+}
+
+impl TryFrom<&syn::Meta> for VariantCode {
+    type Error = ParseErr;
+
+    fn try_from(value: &syn::Meta) -> Result<Self, Self::Error> {
+        let meta_list = match *value {
+            Meta::List(ref meta_list) => meta_list,
+            _ => return Err(ParseErr::Ignore)
+        };
+        let syn::MetaList {
+            ref path,
+            ref nested,
+            ..
+        } = *meta_list;
+        if !path.is_ident("command") {
+            return Err(ParseErr::Ignore);
+        }
+        let mut nested_it = nested.iter().fuse();
+        let code = match (nested_it.next(), nested_it.next()) {
+            (Some(NestedMeta::Meta(Meta::NameValue(name_val))), None) => {
+                if !name_val.path.is_ident("code") {
+                    return Err(ParseErr::Ignore)
+                }
+                match name_val.lit {
+                    syn::Lit::Str(ref s) => s.value(),
+                    _ => return Err(ParseErr::Fatal(
+                        r#"Only string literal allowed as value in #[command(code = "LIT")]"#
+                    )),
+                }
+            },
+            _ => return Err(ParseErr::Ignore)
+        };
+        Ok(VariantCode { code })
+    }
+}
+
+// Validates this: `#[command(skip)]`
+struct VariantSkip;
+
+impl TryFrom<&syn::Meta> for VariantSkip {
+    type Error = ();
+
+    fn try_from(value: &syn::Meta) -> Result<Self, Self::Error> {
+        let meta_list = match *value {
+            Meta::List(ref meta_list) => meta_list,
+            _ => return Err(())
+        };
+        let syn::MetaList {
+            ref path,
+            ref nested,
+            ..
+        } = *meta_list;
+        if !path.is_ident("command") {
+            return Err(());
+        }
+        let mut nested_it = nested.iter().fuse();
+        match (nested_it.next(), nested_it.next()) {
+            (Some(NestedMeta::Meta(Meta::Path(path))), None) => if !path.is_ident("skip") {
+                return Err(())
+            },
+            _ => return Err(())
+        }
+        Ok(Self)
+    }
 }
 
 #[proc_macro_derive(Command, attributes(command))]
@@ -37,14 +103,19 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
             .collect();
         if metas
             .iter()
-            .any(|meta| VariantSkip::from_meta(meta).is_ok())
+            .any(|meta| VariantSkip::try_from(meta).is_ok())
         {
             continue;
         }
-        let mut codes_iter = metas
+        let parse_codes: Vec<_> = metas
             .into_iter()
-            .filter_map(|meta| VariantCode::from_meta(&meta).ok())
-            .fuse();
+            .map(|meta| VariantCode::try_from(&meta))
+            .collect();
+        if let Some(Err(ParseErr::Fatal(err))) = parse_codes.iter().find(|res| matches!(res, Err(ParseErr::Fatal(_)))) {
+            return str_as_compile_error(err);
+        }
+        let mut codes_iter = parse_codes.into_iter()
+            .filter_map(|res| res.ok());
         let code = match (codes_iter.next(), codes_iter.next()) {
             (Some(var_code), None) => var_code.code,
             _ => {
@@ -74,18 +145,17 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
                 (named_iter, idx_fields_piece, pattern)
             }
             Fields::Unnamed(unnamed) => {
-                let named_fields_piece: Vec<_> = unnamed
-                    .unnamed
-                    .iter()
-                    .cloned()
-                    .enumerate()
-                    .map(|(i, _)| format_ident!("x{}", i))
-                    .collect();
-                let idx_fields_piece: Vec<_> = unnamed
+                let field_idxs: Vec<_> = unnamed
                     .unnamed
                     .into_iter()
                     .enumerate()
-                    .map(|(i, _)| Member::Unnamed(i.into()))
+                    .map(|(i, _)| i)
+                    .collect();
+                let named_fields_piece: Vec<_> = field_idxs.iter()
+                    .map(|i| format_ident!("x{}", i))
+                    .collect();
+                let idx_fields_piece: Vec<_> = field_idxs.into_iter()
+                    .map(|i| Member::Unnamed(i.into()))
                     .collect();
                 let pattern: TokenStream2 = quote! {
                     #ident ( #(#named_fields_piece,)* )

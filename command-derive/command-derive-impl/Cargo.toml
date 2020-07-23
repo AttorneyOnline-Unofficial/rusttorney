@@ -9,11 +9,10 @@ publish = false
 proc-macro = true
 
 [dependencies]
-darling = "0.10"
 quote = "1.0"
 proc-macro2 = "1.0"
 
 [dependencies.syn]
 version = "1.0"
 default-features = false
-features = ["derive", "full"]
+features = ["derive", "parsing", "printing", "proc-macro", "full"]
