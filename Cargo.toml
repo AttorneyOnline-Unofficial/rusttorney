@@ -1,5 +1,6 @@
 [workspace]
 members = [
     "rusttorney-server",
-    "command-derive"
+    "command-derive",
+    "command-derive/command-derive-impl"
 ]

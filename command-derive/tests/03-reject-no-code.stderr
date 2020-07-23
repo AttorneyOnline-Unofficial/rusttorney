@@ -1,0 +1,7 @@
+error: Variant ClientRequest::Ping does not have exactly one attribute in a form of `#[command(code = "CODE")]`
+ --> $DIR/03-reject-no-code.rs:3:10
+  |
+3 | #[derive(Command)]
+  |          ^^^^^^^
+  |
+  = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)

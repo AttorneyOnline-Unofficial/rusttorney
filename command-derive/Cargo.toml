@@ -3,7 +3,16 @@ name = "command-derive"
 version = "0.0.0"
 authors = ["Mr-Andersen <vlasov.andrey.oui@gmail.com>"]
 edition = "2018"
+autotests = false
+publish = false
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[test]]
+name = "tests"
+path = "tests/progress.rs"
+
+[dev-dependencies]
+trybuild = { version = "1.0", features = ["diff"] }
 
 [dependencies]
+anyhow = "1.0"
+command-derive-impl = { path = "command-derive-impl" }
