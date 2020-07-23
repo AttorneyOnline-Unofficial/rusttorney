@@ -1,0 +1,5 @@
+error: expected `struct`
+ --> $DIR/04-fromstriter-reject-enum.rs:4:1
+  |
+4 | enum Handshake {
+  | ^^^^

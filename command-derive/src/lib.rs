@@ -21,3 +21,12 @@ pub trait Command: Sized {
         res
     }
 }
+
+pub trait FromStrIter: Sized {
+    type Error;
+
+    fn from_str_iter<I, S>(it: I) -> Result<Self, Self::Error>
+    where
+        S: AsRef<str>,
+        I: Iterator<Item=S>;
+}
