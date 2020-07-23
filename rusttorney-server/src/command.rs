@@ -44,24 +44,26 @@ pub enum ClientCommand {
     PlaySong(u32, u32),                          // MC#<song_name:u32>#<???:u32>#%
     #[command(code = "RT")]
     WTCEButtons(String),                         // RT#<type:String>#%
-    #[command(code = "SETCASE")]
-    SetCasePreferences(String, #[command(flatten)] CasePreferences), /* SETCASE#<cases:String>#<will_cm:boolean>#<will_def:boolean>#<will_pro:boolean>#<will_judge:boolean>#<will_jury:boolean>#<will_steno:boolean>#% */
-    #[command(code = "CASEA")]
-    CaseAnnounce(String, #[command(flatten)] CasePreferences),       // CASEA
+    #[command(code = "SETCASE")]                 /* SETCASE#<cases:String>#<will_cm:boolean>#<will_def:boolean>#<will_pro:boolean>#<will_judge:boolean>#<will_jury:boolean>#<will_steno:boolean>#% */
+    SetCasePreferences(String, #[command(flatten)] CasePreferences),
+    #[command(code = "CASEA")]                   // CASEA
+    CaseAnnounce(String, #[command(flatten)] CasePreferences),
     #[command(code = "HP")]
     Penalties(u32, u32),                         /* HP#<type:u32>#
                                                   * <new_value:u32>#% */
     #[command(code = "PE")]
-    AddEvidence(#[command(flatten)] EvidenceArgs),                   /* PE#<name:String>#<description:String>#
+    AddEvidence(
+        #[command(flatten)] EvidenceArgs),       /* PE#<name:String>#<description:String>#
                                                   * <image:String>#% */
     #[command(code = "DE")]
     DeleteEvidence(u32),                         // DE#<id:u32>#%
     #[command(code = "EE")]
-    EditEvidence(u32, #[command(flatten)] EvidenceArgs),             /* EE#<id:u32>#<name:String>#
+    EditEvidence(u32, #[command(flatten)] EvidenceArgs),
+                                                 /* EE#<id:u32>#<name:String>#
                                                   * <description:String>#<image:
                                                   * String>#% */
     #[command(code = "ZZ")]
-    CallModButton(String),               // ZZ?#<reason:String>?#%
+    CallModButton(String),                       // ZZ?#<reason:String>?#%
 }
 
 #[derive(Debug, PartialEq, WithStrIter)]
