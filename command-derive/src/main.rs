@@ -12,4 +12,7 @@ enum ClientRequest {
     Pong,
 }
 
+#[derive(Debug, FromStrIter, IntoStrIter, PartialEq)]
+struct Nested(i32, i32);
+
 fn main() {}

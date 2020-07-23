@@ -143,7 +143,6 @@ impl ::command_derive::Command for #enum_ident {
     }).into()
 }
 
-// Derives `impl<S: AsRef<str>> ::core::iter::FromIterator<S> for Result<Self, anyhow::Error>`
 #[proc_macro_derive(FromStrIter)]
 pub fn from_str_iter_derive(input: TokenStream) -> TokenStream {
     let ItemStruct { ident: struct_ident, fields, .. } = parse_macro_input!(input as ItemStruct);
@@ -176,6 +175,36 @@ impl ::command_derive::FromStrIter for #struct_ident {
                     .parse()
                     .map_err(|e| ::anyhow::anyhow!("{}", e))?,
         )*})
+    }
+}
+    }).into()
+}
+
+// Derives `IntoIterator<IntoIter=Vec<String>::IntoIter>` for `&Self`
+// Applyable for struct-s
+#[proc_macro_derive(IntoStrIter)]
+pub fn into_str_iter_derive(input: TokenStream) -> TokenStream {
+    let ItemStruct { ident: struct_ident, fields, .. } = parse_macro_input!(input as ItemStruct);
+    let field_names: Vec<_> = match fields {
+        Fields::Named(named) => named.named.into_iter()
+            .map(|field| Member::Named(field.ident.expect("Fields are guaranteed to be named")))
+            .collect(),
+        Fields::Unnamed(unnamed) => unnamed.unnamed.into_iter()
+            .enumerate()
+            .map(|(i, _)| Member::Unnamed(i.into()))
+            .collect(),
+        Fields::Unit => vec![]
+    };
+
+    (quote!{
+impl ::core::iter::IntoIterator for &#struct_ident {
+    type Item = String;
+    type IntoIter = <Vec<String> as ::core::iter::IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        vec![#(
+            self.#field_names.to_string(),
+        )*].into_iter()
     }
 }
     }).into()

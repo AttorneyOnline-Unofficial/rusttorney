@@ -10,6 +10,15 @@ pub(crate) enum ParseErr {
     Ignore
 }
 
+// impl<T> std::iter::Product<Result<T, ParseErr>> for Result<T, ParseErr> {
+//     fn product<I>(iter: I) -> Self
+//     where
+//         I: Iterator<Item = Self>
+//     {
+//         unimplemented!()
+//     }
+// }
+
 impl TryFrom<&Meta> for VariantCode {
     type Error = ParseErr;
 
