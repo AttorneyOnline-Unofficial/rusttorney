@@ -66,27 +66,20 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
                 let idx_fields_piece: Vec<_> =
                     named_iter.iter().cloned().map(Member::Named).collect();
                 let pattern: TokenStream2 = quote! {
-                    #ident {#(
-                        #named_iter,
-                    )*}
+                    #ident {#(#named_iter,)*}
                 };
                 (named_iter, idx_fields_piece, pattern)
             }
             Fields::Unnamed(unnamed) => {
-                let field_idxs: Vec<_> = unnamed
-                    .unnamed
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, _)| i)
-                    .collect();
-                let named_fields_piece: Vec<_> = field_idxs.iter()
+                let field_num = unnamed.unnamed.len();
+                let named_fields_piece: Vec<_> = (0..field_num)
                     .map(|i| format_ident!("x{}", i))
                     .collect();
-                let idx_fields_piece: Vec<_> = field_idxs.into_iter()
+                let idx_fields_piece: Vec<_> = (0..field_num)
                     .map(|i| Member::Unnamed(i.into()))
                     .collect();
                 let pattern: TokenStream2 = quote! {
-                    #ident ( #(#named_fields_piece,)* )
+                    #ident (#(#named_fields_piece,)*)
                 };
                 (named_fields_piece, idx_fields_piece, pattern)
             }
