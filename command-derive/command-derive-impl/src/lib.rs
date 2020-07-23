@@ -7,7 +7,7 @@ use syn::{
 };
 
 mod helpers;
-use helpers::{ParseErr, VariantCode, VariantSkip};
+use helpers::{ParseErr, VariantCode, CommandMarker};
 
 #[proc_macro_derive(Command, attributes(command))]
 pub fn command_derive(input: TokenStream) -> TokenStream {
@@ -31,7 +31,7 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
             .collect();
         if metas
             .iter()
-            .any(|meta| VariantSkip::try_from(meta).is_ok())
+            .any(|meta| CommandMarker("skip").validate(meta).is_ok())
         {
             continue;
         }

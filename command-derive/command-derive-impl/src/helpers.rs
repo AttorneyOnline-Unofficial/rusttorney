@@ -45,13 +45,12 @@ impl TryFrom<&Meta> for VariantCode {
     }
 }
 
-// Validates this: `#[command(skip)]`
-pub(crate) struct VariantSkip;
+// Validates this: `#[command(#0)]`
+#[derive(Clone, Copy)]
+pub(crate) struct CommandMarker(pub &'static str);
 
-impl TryFrom<&Meta> for VariantSkip {
-    type Error = ();
-
-    fn try_from(value: &Meta) -> Result<Self, Self::Error> {
+impl CommandMarker {
+    pub fn validate(self, value: &Meta) -> Result<Self, ()> {
         let meta_list = match *value {
             Meta::List(ref meta_list) => meta_list,
             _ => return Err(())
@@ -66,11 +65,11 @@ impl TryFrom<&Meta> for VariantSkip {
         }
         let mut nested_it = nested.iter().fuse();
         match (nested_it.next(), nested_it.next()) {
-            (Some(NestedMeta::Meta(Meta::Path(path))), None) => if !path.is_ident("skip") {
+            (Some(NestedMeta::Meta(Meta::Path(path))), None) => if !path.is_ident(self.0) {
                 return Err(())
             },
             _ => return Err(())
         }
-        Ok(Self)
+        Ok(self)
     }
 }
