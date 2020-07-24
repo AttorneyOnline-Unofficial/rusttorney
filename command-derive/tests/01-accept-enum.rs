@@ -11,16 +11,16 @@ enum ClientRequest {
     Handshake2(String),
     /// Sent as answer to server's "Ping"
     #[command(code = "PONG")]
-    Pong,
-    // #[command(code = "ANOTHER")]
-    #[command(skip)]
-    Another(Nested)
+    Pong
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, WithStrIter, PartialEq)]
 struct Nested(i32, i32);
 
 fn main() {
+    assert_eq!(Nested(42, 36), Nested::from_str_iter(vec!["42", "36"].into_iter()).unwrap());
+    assert!(Nested::from_str_iter(vec!["42", "kek"].into_iter()).is_err());
+
     let (code, args) = ("HI", vec!["hdid"]);
     let expected = ClientRequest::Handshake { hdid: "hdid".into() };
     let actual = ClientRequest::from_protocol(code, args.into_iter()).unwrap();
