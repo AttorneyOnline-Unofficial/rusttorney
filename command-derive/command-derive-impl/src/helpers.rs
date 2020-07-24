@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 use syn::{Meta, MetaList, NestedMeta};
 
-pub(crate) struct VariantCode {
+pub(crate) struct VariantOpts {
     pub code: String,
 }
 
@@ -10,16 +10,7 @@ pub(crate) enum ParseErr {
     Ignore,
 }
 
-// impl<T> std::iter::Product<Result<T, ParseErr>> for Result<T, ParseErr> {
-//     fn product<I>(iter: I) -> Self
-//     where
-//         I: Iterator<Item = Self>
-//     {
-//         unimplemented!()
-//     }
-// }
-
-impl TryFrom<&Meta> for VariantCode {
+impl TryFrom<&Meta> for VariantOpts {
     type Error = ParseErr;
 
     fn try_from(value: &Meta) -> Result<Self, Self::Error> {
@@ -52,7 +43,7 @@ impl TryFrom<&Meta> for VariantCode {
             }
             _ => return Err(ParseErr::Ignore),
         };
-        Ok(VariantCode { code })
+        Ok(VariantOpts { code })
     }
 }
 

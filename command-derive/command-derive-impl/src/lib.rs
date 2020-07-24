@@ -5,7 +5,7 @@ use quote::{format_ident, quote};
 use syn::{parse_macro_input, Fields, ItemEnum, ItemStruct, Member, Variant};
 
 mod helpers;
-use helpers::{CommandMarker, ParseErr, VariantCode};
+use helpers::{CommandMarker, ParseErr, VariantOpts};
 
 #[proc_macro_derive(Command, attributes(command))]
 pub fn command_derive(input: TokenStream) -> TokenStream {
@@ -18,6 +18,7 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
     let mut var_idents = Vec::with_capacity(vars.len());
     let mut codes = Vec::with_capacity(vars.len());
     let mut patterns = Vec::with_capacity(vars.len());
+    let mut named_fields = Vec::with_capacity(vars.len());
     let mut named_fields_to_str = Vec::with_capacity(vars.len());
     let mut idx_fields = Vec::with_capacity(vars.len());
     let mut read_fields = Vec::with_capacity(vars.len());
@@ -40,7 +41,7 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
         }
         let parse_codes: Vec<_> = metas
             .into_iter()
-            .map(|meta| VariantCode::try_from(&meta))
+            .map(|meta| VariantOpts::try_from(&meta))
             .collect();
         if let Some(Err(ParseErr::Fatal(err))) = parse_codes
             .iter()
@@ -61,12 +62,15 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
                 ))
             }
         };
-        let (named_fields_to_str_piece, read_fields_piece, idx_fields_piece, pattern) = match fields
-        {
+        let (
+            named_fields_piece,
+            named_fields_to_str_piece,
+            read_fields_piece,
+            idx_fields_piece,
+            pattern
+        ) = match fields {
             Fields::Named(named) => {
-                let named_iter: Vec<_> = named
-                    .named
-                    .into_iter()
+                let named_iter: Vec<_> = named.named.into_iter()
                     .map(|field| {
                         (
                             field.ident.expect("Variant is guaranteed to be named"),
@@ -78,6 +82,7 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
                         )
                     })
                     .collect();
+                let named_fields_piece: Vec<_> = named_iter.iter().map(|(ident, _)| ident.clone()).collect();
                 let idx_fields_piece: Vec<_> = named_iter
                     .iter()
                     .cloned()
@@ -95,11 +100,11 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
                         )
                     })
                     .unzip();
-                let field_names = named_iter.into_iter().map(|(ident, _)| ident);
                 let pattern = quote! {
-                    #ident {#(#field_names,)*}
+                    #ident {#(#named_fields_piece,)*}
                 };
                 (
+                    named_fields_piece,
                     named_fields_to_str_piece,
                     read_fields_piece,
                     idx_fields_piece,
@@ -115,7 +120,7 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
                         .filter_map(|attr| attr.parse_meta().ok())
                         .any(|meta| CommandMarker("flatten").validate(&meta).is_ok())
                 });
-                let named_fields: Vec<_> =
+                let named_fields_piece: Vec<_> =
                     (0..field_num).map(|i| format_ident!("x{}", i)).collect();
                 let (named_fields_to_str_piece, read_fields_piece): (Vec<_>, Vec<_>) = (0..field_num)
                     .zip(flatten_flags)
@@ -136,25 +141,43 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
                 let idx_fields_piece: Vec<_> =
                     (0..field_num).map(|i| Member::Unnamed(i.into())).collect();
                 let pattern = quote! {
-                    #ident (#(#named_fields,)*)
+                    #ident (#(#named_fields_piece,)*)
                 };
                 (
+                    named_fields_piece,
                     named_fields_to_str_piece,
                     read_fields_piece,
                     idx_fields_piece,
                     pattern,
                 )
             }
-            Fields::Unit => (Vec::new(), Vec::new(), Vec::new(), quote! { #ident }),
+            Fields::Unit => (
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                Vec::new(),
+                quote! { #ident }
+            ),
         };
         var_idents.push(ident);
         codes.push(code);
+        named_fields.push(named_fields_piece);
         named_fields_to_str.push(named_fields_to_str_piece);
         read_fields.push(read_fields_piece);
         idx_fields.push(idx_fields_piece);
         patterns.push(pattern);
     }
     (quote! {
+    impl #enum_ident {
+        async fn handle<'a>(self, handler: /*AO2MessageHandler<'a>*/()) -> Result<(), ::anyhow::Error> {
+            match self {
+                #(
+                    #enum_ident::#patterns => Ok(()),
+                )*
+            }
+        }
+    }
+
     impl ::command_derive::Command for #enum_ident {
         fn ident(&self) -> &'static str {
             match self {
