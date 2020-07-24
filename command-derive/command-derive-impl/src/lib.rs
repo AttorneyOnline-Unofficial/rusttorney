@@ -201,9 +201,9 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
     .into()
 }
 
-// Derives `IntoIterator<IntoIter=Vec<String>::IntoIter>` for `&Self`
-// and `FromStrIter` for `Self`
-// Applyable for struct-s
+/// Derives `IntoIterator<IntoIter=Vec<String>::IntoIter>` for `&Self`
+/// and `FromStrIter` for `Self`
+/// Applyable for struct-s
 #[proc_macro_derive(WithStrIter)]
 pub fn with_str_iter_derive(input: TokenStream) -> TokenStream {
     let ItemStruct {
