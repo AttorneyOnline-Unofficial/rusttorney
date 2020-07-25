@@ -22,13 +22,13 @@ use tokio::sync::Mutex;
 use tokio::time::Duration;
 use tokio_util::codec::{Decoder, Framed};
 
-pub struct AOServer<'a> {
-    config: &'a Config<'a>,
+pub struct AOServer {
+    config: Arc<Config>,
     db: DbWrapper,
     client_manager: Arc<Mutex<ClientManager>>,
 }
 
-pub struct AO2MessageHandler<'a> {
+pub struct AO2MessageHandler {
     socket: Framed<TcpStream, AOMessageCodec>,
     db: DbWrapper,
     client_manager: Arc<Mutex<ClientManager>>,
@@ -36,10 +36,10 @@ pub struct AO2MessageHandler<'a> {
     client: Client,
     software: String,
     version: String,
-    config: Config<'a>,
+    config: Arc<Config>,
 }
 
-impl<'a> AO2MessageHandler<'a> {
+impl AO2MessageHandler {
     pub async fn new(
         mut socket: Framed<TcpStream, AOMessageCodec>,
         db: DbWrapper,
@@ -47,8 +47,8 @@ impl<'a> AO2MessageHandler<'a> {
         timeout: u64,
         timeout_tx: Sender<()>,
         ip: IpAddr,
-        config: Config<'a>,
-    ) -> Result<AO2MessageHandler<'a>, anyhow::Error> {
+        config: Arc<Config>,
+    ) -> Result<Self, anyhow::Error> {
         let (ch_tx, mut ch_rx) = futures::channel::mpsc::channel(1);
 
         tokio::spawn(async move {
@@ -169,8 +169,8 @@ impl<'a> AO2MessageHandler<'a> {
     }
 }
 
-impl<'a> AOServer<'a> {
-    pub fn new(config: &'a Config<'a>, db: DbWrapper) -> anyhow::Result<Self> {
+impl AOServer {
+    pub fn new(config: Arc<Config>, db: DbWrapper) -> anyhow::Result<Self> {
         let playerlimit = config.general.playerlimit;
         Ok(Self {
             config,
@@ -253,6 +253,7 @@ impl<'a> AOServer<'a> {
 
         loop {
             let db = self.db.clone();
+            let config = self.config.clone();
             let client_manager = self.client_manager.clone();
             let (socket, c) = listener.accept().await?;
             log::debug!("got incoming connection from: {:?}", &c);
@@ -264,11 +265,6 @@ impl<'a> AOServer<'a> {
 
                 // https://github.com/AttorneyOnline/tsuserver3/blob/master/server/network/aoprotocol.py#L135
                 framed.send(ServerCommand::Decryptor(34)).await.unwrap();
-
-                let config_path = PathBuf::from("./config/config.toml");
-                let config_string =
-                    std::fs::read_to_string(&config_path).unwrap();
-                let config: Config = toml::from_str(&config_string).unwrap();
 
                 let mut handler = AO2MessageHandler::new(
                     framed,

@@ -11,6 +11,7 @@ use rusttorney_server::{config::Config, server::AOServer};
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -18,7 +19,7 @@ async fn main() -> anyhow::Result<()> {
 
     let config_path = PathBuf::from("./config/config.toml");
     let config_string = std::fs::read_to_string(&config_path)?;
-    let config: Config = toml::from_str(&config_string)?;
+    let config: Arc<Config> = Arc::new(toml::from_str(&config_string)?);
 
     if config.debug {
         filter = "debug"
@@ -47,5 +48,5 @@ async fn main() -> anyhow::Result<()> {
 
     let db = DbWrapper::new(pool);
 
-    AOServer::new(&config, db)?.run().await
+    AOServer::new(config, db)?.run().await
 }

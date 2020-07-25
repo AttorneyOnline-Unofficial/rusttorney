@@ -6,6 +6,7 @@ use futures::future::BoxFuture;
 use serde::export::PhantomData;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::Context;
 use tokio::io::{AsyncWrite, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::macros::support::Poll;
@@ -60,7 +61,7 @@ where
     R: CommandReader + Unpin,
     W: AsyncWrite + Unpin,
 {
-    config: &'a Config<'a>,
+    config: Arc<Config>,
     software: &'a str,
     reader: R,
     writer: W,
@@ -78,7 +79,7 @@ where
     W: AsyncWrite + Unpin,
 {
     pub fn new(
-        config: &'a Config<'a>,
+        config: Arc<Config>,
         software: &'a str,
         reader: R,
         writer: W,
@@ -146,7 +147,7 @@ where
 
 impl<'a> MasterServerClient<'a, TcpCommandReader, WriteHalf<TcpStream>> {
     pub async fn from_config_with_connect(
-        config: &'a Config<'a>,
+        config: Arc<Config>,
         software: &'a str,
     ) -> Result<
         MasterServerClient<'a, TcpCommandReader, WriteHalf<TcpStream>>,
