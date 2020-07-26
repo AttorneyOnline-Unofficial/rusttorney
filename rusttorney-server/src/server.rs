@@ -1,4 +1,6 @@
-use crate::command::{ClientCommand, CasePreferences, EvidenceArgs, ServerCommand};
+use crate::command::{
+    CasePreferences, ClientCommand, EvidenceArgs, ServerCommand,
+};
 use crate::config::Config;
 
 use crate::client_manager::{Client, ClientManager};
@@ -164,11 +166,19 @@ impl<'a> AO2MessageHandler<'a> {
             .await
     }
 
-    pub async fn handle_client_version(&mut self, _: u32, _: String, _: String) -> Result<(), anyhow::Error> {
+    pub async fn handle_client_version(
+        &mut self,
+        _: u32,
+        _: String,
+        _: String,
+    ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 
-    pub async fn handle_keepalive(&mut self, _: i32) -> Result<(), anyhow::Error> {
+    pub async fn handle_keepalive(
+        &mut self,
+        _: i32,
+    ) -> Result<(), anyhow::Error> {
         self.ch_tx.send(()).await?;
         self.socket.send(ServerCommand::KeepAlive).await
     }
@@ -185,15 +195,24 @@ impl<'a> AO2MessageHandler<'a> {
         unimplemented!()
     }
 
-    pub async fn handle_character_list(&mut self, _: u32) -> Result<(), anyhow::Error> {
+    pub async fn handle_character_list(
+        &mut self,
+        _: u32,
+    ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 
-    pub async fn handle_evidence_list(&mut self, _: u32) -> Result<(), anyhow::Error> {
+    pub async fn handle_evidence_list(
+        &mut self,
+        _: u32,
+    ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 
-    pub async fn handle_music_list(&mut self, _: u32) -> Result<(), anyhow::Error> {
+    pub async fn handle_music_list(
+        &mut self,
+        _: u32,
+    ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 
@@ -214,7 +233,10 @@ impl<'a> AO2MessageHandler<'a> {
     }
 
     pub async fn handle_select_character(
-        &mut self, _: u32, _: u32, _: String
+        &mut self,
+        _: u32,
+        _: u32,
+        _: String,
     ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
@@ -223,50 +245,78 @@ impl<'a> AO2MessageHandler<'a> {
         unimplemented!()
     }
 
-    pub async fn handle_o_o_c_message(&mut self, _: String, _: String) -> Result<(), anyhow::Error> {
+    pub async fn handle_o_o_c_message(
+        &mut self,
+        _: String,
+        _: String,
+    ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 
-    pub async fn handle_play_song(&mut self, _: u32, _: u32) -> Result<(), anyhow::Error> {
+    pub async fn handle_play_song(
+        &mut self,
+        _: u32,
+        _: u32,
+    ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 
     pub async fn handle_w_t_c_e_buttons(
-        &mut self, _: String
+        &mut self,
+        _: String,
     ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 
     pub async fn handle_set_case_preferences(
-        &mut self, _: String, _: CasePreferences
+        &mut self,
+        _: String,
+        _: CasePreferences,
     ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 
-    pub async fn handle_case_announce(&mut self, _: String, _: CasePreferences) -> Result<(), anyhow::Error> {
+    pub async fn handle_case_announce(
+        &mut self,
+        _: String,
+        _: CasePreferences,
+    ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 
-    pub async fn handle_penalties(&mut self, _: u32, _: u32) -> Result<(), anyhow::Error> {
+    pub async fn handle_penalties(
+        &mut self,
+        _: u32,
+        _: u32,
+    ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 
-    pub async fn handle_add_evidence(&mut self, _: EvidenceArgs) -> Result<(), anyhow::Error> {
+    pub async fn handle_add_evidence(
+        &mut self,
+        _: EvidenceArgs,
+    ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 
     pub async fn handle_delete_evidence(
-        &mut self, _: u32
+        &mut self,
+        _: u32,
     ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 
-    pub async fn handle_edit_evidence(&mut self, _: u32, _: EvidenceArgs) -> Result<(), anyhow::Error> {
+    pub async fn handle_edit_evidence(
+        &mut self,
+        _: u32,
+        _: EvidenceArgs,
+    ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 
     pub async fn handle_call_mod_button(
-        &mut self, _: String
+        &mut self,
+        _: String,
     ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
