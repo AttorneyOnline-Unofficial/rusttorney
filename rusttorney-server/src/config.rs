@@ -1,40 +1,38 @@
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
-pub struct Config<'a> {
+pub struct Config {
     pub debug: bool,
     pub timeout: u32,
     pub multiclient_limit: u8,
     pub max_chars: u32,
     pub zalgo_tolerance: u8,
-    #[serde(borrow)]
-    pub general: GeneralConfig<'a>,
-    #[serde(borrow)]
-    pub masterserver: MasterServerConfig<'a>,
+    pub general: GeneralConfig,
+    pub masterserver: MasterServerConfig,
     pub wtce_floodguard: FloodGuardConfig,
     pub music_change_floodguard: FloodGuardConfig,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct GeneralConfig<'a> {
-    pub hostname: &'a str,
-    pub host: &'a str,
+pub struct GeneralConfig {
+    pub hostname: String,
+    pub host: String,
     pub playerlimit: u8,
     pub port: u32,
     pub local: bool,
-    pub modpass: &'a str,
-    pub motd: &'a str,
+    pub modpass: String,
+    pub motd: String,
     pub websocket_port: Option<u32>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct MasterServerConfig<'a> {
+pub struct MasterServerConfig {
     #[serde(rename = "use")]
     pub use_masterserver: bool,
-    pub ip: &'a str,
+    pub ip: String,
     pub port: u16,
-    pub name: &'a str,
-    pub description: &'a str,
+    pub name: String,
+    pub description: String,
 }
 
 #[derive(Debug, Deserialize)]

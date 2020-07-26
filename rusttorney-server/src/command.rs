@@ -18,7 +18,7 @@ pub enum ClientCommand {
     KeepAlive(i32),                              // CH
     #[command(code = "askchaa", handle = "handle_ask_list_lengths")]
     AskListLengths,                              // askchaa
-    #[command(code = "askchar", handle = "handle_ask_list_characters")]
+    #[command(code = "askchar2", handle = "handle_ask_list_characters")]
     AskListCharacters,                           // askchar
     #[command(code = "AN", handle = "handle_character_list")]
     CharacterList(u32),                          // AN#<page:u32>#%
