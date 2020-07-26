@@ -1,4 +1,4 @@
-use syn::{Meta, MetaList, NestedMeta, Lit, parse_str, Path, parse::Parse};
+use syn::{Ident, Meta, MetaList, NestedMeta, Lit, parse_str, Path, parse::Parse};
 
 type ParseRes<T> = Result<Option<T>, String>;
 
@@ -37,7 +37,7 @@ impl<'a> ParseAssign<'a> {
 #[derive(Default)]
 pub(crate) struct VariantOpts {
     pub code: Option<String>,
-    pub handle: Option<Path>
+    pub handle: Option<Ident>
 }
 
 impl VariantOpts {
@@ -58,7 +58,7 @@ impl VariantOpts {
 
         nested_it.try_fold(self, |status, nested| -> Result<VariantOpts, String> {
             let code_opt = ParseAssign("code").parse_str(nested)?;
-            let handle_opt = ParseAssign("handle").parse_arg::<Path>(nested)?;
+            let handle_opt = ParseAssign("handle").parse_arg(nested)?;
 
             match (handle_opt, code_opt, status) {
                 (handle @ Some(_), code @ Some(_), VariantOpts { handle: None, code: None }) => {
@@ -76,29 +76,43 @@ impl VariantOpts {
                 _ => Err("Keys in `#[command(...)]` can't be repeated".into())
             }
         })
-
-        // let code = match (nested_it.next(), nested_it.next()) {
-        //     (Some(NestedMeta::Meta(Meta::NameValue(name_val))), None) => {
-        //         if !name_val.path.is_ident("code") {
-        //             return Ok(None);
-        //         }
-        //         match name_val.lit {
-        //             Lit::Str(s) => s.value(),
-        //             other => {
-        //                 return Err(format!(
-        //                     r#"Only string literal allowed as value in #[command(code = "LIT")], found {:?}"#,
-        //                     other
-        //                 ))
-        //             }
-        //         }
-        //     }
-        //     _ => return Ok(None),
-        // };
-        // Ok(Some(VariantOpts { code }))
     }
 }
 
-// Validates this: `#[command(#0)]`
+#[derive(Default)]
+pub(crate) struct HandlerOpt {
+    pub handler: Option<Path>
+}
+
+impl HandlerOpt {
+    pub(crate) fn parse_from_meta(self, value: &Meta) -> Result<Self, String> {
+        let meta_list = match value {
+            Meta::List(meta_list) => meta_list,
+            _ => return Ok(self),
+        };
+        let MetaList {
+            path,
+            nested,
+            ..
+        } = meta_list;
+        if !path.is_ident("command") {
+            return Ok(self);
+        }
+        let mut nested_it = nested.iter();
+
+        nested_it.try_fold(self, |status, nested| -> Result<HandlerOpt, String> {
+            let handler_opt = ParseAssign("handler").parse_arg(nested)?;
+
+            match (handler_opt, status) {
+                (handler, HandlerOpt { handler: None }) => Ok(HandlerOpt { handler }),
+                (None, HandlerOpt { handler }) => Ok(HandlerOpt { handler }),
+                _ => Err("`handler` specified multiply times".into())
+            }
+        })
+    }
+}
+
+/// Validates this: `#[command(#0)]`
 #[derive(Clone, Copy)]
 pub(crate) struct CommandMarker(pub &'static str);
 

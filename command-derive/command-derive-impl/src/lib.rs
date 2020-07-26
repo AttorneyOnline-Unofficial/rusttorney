@@ -3,15 +3,26 @@ use quote::{format_ident, quote};
 use syn::{parse_macro_input, Fields, ItemEnum, ItemStruct, Member, Variant};
 
 mod helpers;
-use helpers::{CommandMarker, VariantOpts};
+use helpers::{CommandMarker, HandlerOpt, VariantOpts};
 
 #[proc_macro_derive(Command, attributes(command))]
 pub fn command_derive(input: TokenStream) -> TokenStream {
     let ItemEnum {
         ident: enum_ident,
         variants: vars_punct,
+        attrs,
         ..
     } = parse_macro_input!(input as ItemEnum);
+
+    let handler_opt_res = attrs
+        .into_iter()
+        .filter_map(|attr| attr.parse_meta().ok())
+        .try_fold(HandlerOpt::default(), |handler_opt, meta| handler_opt.parse_from_meta(&meta));
+    let handler_opt = match handler_opt_res {
+        Ok(HandlerOpt { handler }) => handler,
+        Err(err) => return str_as_compile_error(&err)
+    };
+
     let vars: Vec<_> = vars_punct.into_iter().collect();
     let mut var_idents = Vec::with_capacity(vars.len());
     let mut codes = Vec::with_capacity(vars.len());
@@ -53,29 +64,6 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
                 )),
             Err(err) => return str_as_compile_error(&err)
         };
-        // let parse_codes: Vec<_> = metas
-        //     .into_iter()
-        //     .map(|meta| var_opts.parse_from_meta(&meta))
-        //     .collect();
-        // if let Some(Err(err)) = parse_codes
-        //     .iter()
-        //     .find(|res| matches!(res, Err(_)))
-        // {
-        //     return str_as_compile_error(err);
-        // }
-        // let mut codes_iter = parse_codes.into_iter().filter_map(|res| res.ok().flatten());
-        // let code = match (codes_iter.next(), codes_iter.next()) {
-        //     (Some(var_code), None) => var_code.code,
-        //     _ => {
-        //         return str_as_compile_error(&format!(
-        //             concat!(
-        //                 r#"Variant {}::{} does not have exactly one "#,
-        //                 r#"attribute in a form of `#[command(code = "CODE")]`"#
-        //             ),
-        //             enum_ident, ident
-        //         ))
-        //     }
-        // };
         let (
             named_fields_piece,
             named_fields_to_str_piece,
@@ -182,17 +170,7 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
         idx_fields.push(idx_fields_piece);
         patterns.push(pattern);
     }
-    (quote! {
-    impl #enum_ident {
-        async fn handle<'a>(self, handler: &'a mut AO2MessageHandler<'a>) -> Result<(), ::anyhow::Error> {
-            match self {
-                #(
-                    #enum_ident::#patterns => handler.#handles(#(#named_fields,)*).await,
-                )*
-            }
-        }
-    }
-
+    let mut res = quote! {
     impl ::command_derive::Command for #enum_ident {
         fn ident(&self) -> &'static str {
             match self {
@@ -235,8 +213,21 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
             Ok(res)
         }
     }
-        })
-    .into()
+    };
+    if let Some(handler) = handler_opt {
+        res.extend(quote!{
+    impl #enum_ident {
+        pub async fn handle<'a>(self, handler: &'a mut #handler) -> Result<(), ::anyhow::Error> {
+            match self {
+                #(
+                    #enum_ident::#patterns => handler.#handles(#(#named_fields,)*).await,
+                )*
+            }
+        }
+    }
+        });
+    }
+    res.into()
 }
 
 /// Derives `IntoIterator<IntoIter=Vec<String>::IntoIter>` for `&Self`

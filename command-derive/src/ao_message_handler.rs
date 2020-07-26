@@ -21,7 +21,7 @@ impl<'a> AO2MessageHandler<'a> {
         unimplemented!()
     }
 
-    pub async fn handle_flattened(&mut self, _nested: super::Nested) -> Result<(), anyhow::Error> {
+    pub async fn handle_edit_evidence(&mut self, _id: u32, _nested: super::EvidenceArgs) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 }
