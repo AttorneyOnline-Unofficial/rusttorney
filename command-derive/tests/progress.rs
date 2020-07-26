@@ -8,4 +8,5 @@ fn tests() {
     t.pass("tests/05-accept-fromstriter-both-named-and-unnamed.rs");
     t.compile_fail("tests/06-reject-wrong-code-lit.rs");
     t.compile_fail("tests/07-reject-double-key.rs");
+    t.pass("tests/08-accept-no-handler.rs");
 }
