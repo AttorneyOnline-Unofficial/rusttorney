@@ -1,4 +1,4 @@
-use crate::command::{ClientCommand, ServerCommand};
+use crate::command::{ClientCommand, CasePreferences, EvidenceArgs, ServerCommand};
 use crate::config::Config;
 
 use crate::client_manager::{Client, ClientManager};
@@ -96,13 +96,46 @@ impl<'a> AO2MessageHandler<'a> {
     }
 
     async fn handle(
-        &mut self,
+        &'a mut self,
         command: ClientCommand,
     ) -> Result<(), anyhow::Error> {
-        match command {
-            ClientCommand::Handshake(hdid) => self.handle_handshake(hdid).await,
-            ClientCommand::KeepAlive(_) => self.handle_keepalive().await,
-            _ => Ok(()),
+        command.handle(self).await
+        // match command {
+        //     ClientCommand::Handshake(hdid) => self.handle_handshake(hdid).await,
+        //     ClientCommand::KeepAlive(x) => self.handle_keepalive(x).await,
+        //     _ => Ok(()),
+        // }
+    }
+
+    async fn player_count(&self) -> u8 {
+        self.client_manager
+            .lock()
+            .await
+            .clients
+            .iter()
+            .filter(|c| c.char_id != 1)
+            .count() as u8
+    }
+
+    async fn start_handling(
+        &mut self,
+        mut timeout_rx: Receiver<()>,
+    ) -> Result<(), anyhow::Error> {
+        // main client connection loop
+        loop {
+            // run concurrently timeout receiver and decoder, getting messages and handling them
+            select! {
+                _ = &mut timeout_rx => {
+                    return Err(anyhow::anyhow!("Client disconnected because of timeout!"));
+                }
+                res = self.socket.next() => {
+                    if let Some(parsed) = res {
+                        self.handle(parsed?).await?;
+                    } else {
+                        return Err(anyhow::anyhow!("Client disconnected!"));
+                    }
+                }
+            }
         }
     }
 
@@ -131,41 +164,111 @@ impl<'a> AO2MessageHandler<'a> {
             .await
     }
 
-    async fn player_count(&self) -> u8 {
-        self.client_manager
-            .lock()
-            .await
-            .clients
-            .iter()
-            .filter(|c| c.char_id != 1)
-            .count() as u8
+    pub async fn handle_client_version(&mut self, _: u32, _: String, _: String) -> Result<(), anyhow::Error> {
+        unimplemented!()
     }
 
-    pub async fn handle_keepalive(&mut self) -> Result<(), anyhow::Error> {
+    pub async fn handle_keepalive(&mut self, _: i32) -> Result<(), anyhow::Error> {
         self.ch_tx.send(()).await?;
         self.socket.send(ServerCommand::KeepAlive).await
     }
 
-    async fn start_handling(
-        mut self,
-        mut timeout_rx: Receiver<()>,
+    pub async fn handle_ask_list_lengths(
+        &mut self,
     ) -> Result<(), anyhow::Error> {
-        // main client connection loop
-        loop {
-            // run concurrently timeout receiver and decoder, getting messages and handling them
-            select! {
-                _ = &mut timeout_rx => {
-                    return Err(anyhow::anyhow!("Client disconnected because of timeout!"));
-                }
-                res = self.socket.next() => {
-                    if let Some(parsed) = res {
-                        self.handle(parsed?).await?;
-                    } else {
-                        return Err(anyhow::anyhow!("Client disconnected!"));
-                    }
-                }
-            }
-        }
+        unimplemented!()
+    }
+
+    pub async fn handle_ask_list_characters(
+        &mut self,
+    ) -> Result<(), anyhow::Error> {
+        unimplemented!()
+    }
+
+    pub async fn handle_character_list(&mut self, _: u32) -> Result<(), anyhow::Error> {
+        unimplemented!()
+    }
+
+    pub async fn handle_evidence_list(&mut self, _: u32) -> Result<(), anyhow::Error> {
+        unimplemented!()
+    }
+
+    pub async fn handle_music_list(&mut self, _: u32) -> Result<(), anyhow::Error> {
+        unimplemented!()
+    }
+
+    pub async fn handle_a_o2_character_list(
+        &mut self,
+    ) -> Result<(), anyhow::Error> {
+        unimplemented!()
+    }
+
+    pub async fn handle_a_o2_music_list(
+        &mut self,
+    ) -> Result<(), anyhow::Error> {
+        unimplemented!()
+    }
+
+    pub async fn handle_a_o2_ready(&mut self) -> Result<(), anyhow::Error> {
+        unimplemented!()
+    }
+
+    pub async fn handle_select_character(
+        &mut self, _: u32, _: u32, _: String
+    ) -> Result<(), anyhow::Error> {
+        unimplemented!()
+    }
+
+    pub async fn handle_i_c_message(&mut self) -> Result<(), anyhow::Error> {
+        unimplemented!()
+    }
+
+    pub async fn handle_o_o_c_message(&mut self, _: String, _: String) -> Result<(), anyhow::Error> {
+        unimplemented!()
+    }
+
+    pub async fn handle_play_song(&mut self, _: u32, _: u32) -> Result<(), anyhow::Error> {
+        unimplemented!()
+    }
+
+    pub async fn handle_w_t_c_e_buttons(
+        &mut self, _: String
+    ) -> Result<(), anyhow::Error> {
+        unimplemented!()
+    }
+
+    pub async fn handle_set_case_preferences(
+        &mut self, _: String, _: CasePreferences
+    ) -> Result<(), anyhow::Error> {
+        unimplemented!()
+    }
+
+    pub async fn handle_case_announce(&mut self, _: String, _: CasePreferences) -> Result<(), anyhow::Error> {
+        unimplemented!()
+    }
+
+    pub async fn handle_penalties(&mut self, _: u32, _: u32) -> Result<(), anyhow::Error> {
+        unimplemented!()
+    }
+
+    pub async fn handle_add_evidence(&mut self, _: EvidenceArgs) -> Result<(), anyhow::Error> {
+        unimplemented!()
+    }
+
+    pub async fn handle_delete_evidence(
+        &mut self, _: u32
+    ) -> Result<(), anyhow::Error> {
+        unimplemented!()
+    }
+
+    pub async fn handle_edit_evidence(&mut self, _: u32, _: EvidenceArgs) -> Result<(), anyhow::Error> {
+        unimplemented!()
+    }
+
+    pub async fn handle_call_mod_button(
+        &mut self, _: String
+    ) -> Result<(), anyhow::Error> {
+        unimplemented!()
     }
 }
 

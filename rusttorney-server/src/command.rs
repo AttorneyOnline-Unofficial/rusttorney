@@ -14,7 +14,7 @@ pub enum ClientCommand {
     #[command(code = "ID", handle = "handle_client_version")]
     ClientVersion(u32, String, String),          /* ID#<pv:u32>#<software:String>#
                                                   * <version:String>#% */
-    #[command(code = "CH", handle = "handle_keep_alive")]
+    #[command(code = "CH", handle = "handle_keepalive")]
     KeepAlive(i32),                              // CH
     #[command(code = "askchaa", handle = "handle_ask_list_lengths")]
     AskListLengths,                              // askchaa
