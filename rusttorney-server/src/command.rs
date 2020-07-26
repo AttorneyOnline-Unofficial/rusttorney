@@ -26,24 +26,24 @@ pub enum ClientCommand {
     EvidenceList(u32),                           // AE#<page:u32>#%
     #[command(code = "AM", handle = "handle_music_list")]
     MusicList(u32),                              // AM#<page:u32>#%
-    #[command(code = "AC", handle = "handle_a_o2_character_list")]
+    #[command(code = "AC", handle = "handle_ao2_character_list")]
     AO2CharacterList,                            // AC#%
-    #[command(code = "AM", handle = "handle_a_o2_music_list")]
+    #[command(code = "AM", handle = "handle_ao2_music_list")]
     AO2MusicList,                                // AM#%
-    #[command(code = "RD", handle = "handle_a_o2_ready")]
+    #[command(code = "RD", handle = "handle_ao2_ready")]
     AO2Ready,                                    // RD#%
     #[command(code = "CC", handle = "handle_select_character")]
     SelectCharacter(u32, u32, String),           /* CC<client_id:u32>#
                                                   * <char_id:u32#<hdid:
                                                   * String>#% */
-    #[command(code = "MS", handle = "handle_i_c_message")]
+    #[command(code = "MS", handle = "handle_ic_message")]
     ICMessage,                                   // MS
-    #[command(code = "CT", handle = "handle_o_o_c_message")]
+    #[command(code = "CT", handle = "handle_ooc_message")]
     OOCMessage(String, String),                  /* CT#<name:String>#
                                                   * <message:String>#% */
     #[command(code = "MC", handle = "handle_play_song")]
     PlaySong(u32, u32),                          // MC#<song_name:u32>#<???:u32>#%
-    #[command(code = "RT", handle = "handle_w_t_c_e_buttons")]
+    #[command(code = "RT", handle = "handle_wtce_buttons")]
     WTCEButtons(String),                         // RT#<type:String>#%
     #[command(code = "SETCASE", handle = "handle_set_case_preferences")]                 /* SETCASE#<cases:String>#<will_cm:boolean>#<will_def:boolean>#<will_pro:boolean>#<will_judge:boolean>#<will_jury:boolean>#<will_steno:boolean>#% */
     SetCasePreferences(String, #[command(flatten)] CasePreferences),

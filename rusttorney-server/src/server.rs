@@ -168,9 +168,9 @@ impl AO2MessageHandler {
 
     pub async fn handle_client_version(
         &mut self,
-        _: u32,
-        _: String,
-        _: String,
+        x: u32,
+        y: String,
+        z: String,
     ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
@@ -216,19 +216,19 @@ impl AO2MessageHandler {
         unimplemented!()
     }
 
-    pub async fn handle_a_o2_character_list(
+    pub async fn handle_ao2_character_list(
         &mut self,
     ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 
-    pub async fn handle_a_o2_music_list(
+    pub async fn handle_ao2_music_list(
         &mut self,
     ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 
-    pub async fn handle_a_o2_ready(&mut self) -> Result<(), anyhow::Error> {
+    pub async fn handle_ao2_ready(&mut self) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 
@@ -241,11 +241,11 @@ impl AO2MessageHandler {
         unimplemented!()
     }
 
-    pub async fn handle_i_c_message(&mut self) -> Result<(), anyhow::Error> {
+    pub async fn handle_ic_message(&mut self) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 
-    pub async fn handle_o_o_c_message(
+    pub async fn handle_ooc_message(
         &mut self,
         _: String,
         _: String,
@@ -261,7 +261,7 @@ impl AO2MessageHandler {
         unimplemented!()
     }
 
-    pub async fn handle_w_t_c_e_buttons(
+    pub async fn handle_wtce_buttons(
         &mut self,
         _: String,
     ) -> Result<(), anyhow::Error> {
