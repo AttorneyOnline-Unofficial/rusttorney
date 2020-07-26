@@ -210,9 +210,7 @@ impl AO2MessageHandler {
         unimplemented!()
     }
 
-    pub async fn handle_ao2_music_list(
-        &mut self,
-    ) -> Result<(), anyhow::Error> {
+    pub async fn handle_ao2_music_list(&mut self) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 
