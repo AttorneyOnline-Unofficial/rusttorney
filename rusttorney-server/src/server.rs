@@ -106,7 +106,7 @@ impl<'a> AO2MessageHandler<'a> {
         }
     }
 
-    async fn handle_handshake(
+    async pub fn handle_handshake(
         &mut self,
         hdid: String,
     ) -> Result<(), anyhow::Error> {
@@ -141,7 +141,7 @@ impl<'a> AO2MessageHandler<'a> {
             .count() as u8
     }
 
-    async fn handle_keepalive(&mut self) -> Result<(), anyhow::Error> {
+    async pub fn handle_keepalive(&mut self) -> Result<(), anyhow::Error> {
         self.ch_tx.send(()).await?;
         self.socket.send(ServerCommand::KeepAlive).await
     }
