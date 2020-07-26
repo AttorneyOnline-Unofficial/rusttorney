@@ -156,9 +156,9 @@ impl AO2MessageHandler {
 
     pub async fn handle_client_version(
         &mut self,
-        x: u32,
-        y: String,
-        z: String,
+        _: u32,
+        _: String,
+        _: String,
     ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
