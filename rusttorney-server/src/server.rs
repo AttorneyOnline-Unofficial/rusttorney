@@ -97,18 +97,6 @@ impl AO2MessageHandler {
         })
     }
 
-    async fn handle(
-        &mut self,
-        command: ClientCommand,
-    ) -> Result<(), anyhow::Error> {
-        command.handle(self).await
-        // match command {
-        //     ClientCommand::Handshake(hdid) => self.handle_handshake(hdid).await,
-        //     ClientCommand::KeepAlive(x) => self.handle_keepalive(x).await,
-        //     _ => Ok(()),
-        // }
-    }
-
     async fn player_count(&self) -> u8 {
         self.client_manager
             .lock()
@@ -132,7 +120,7 @@ impl AO2MessageHandler {
                 }
                 res = self.socket.next() => {
                     if let Some(parsed) = res {
-                        self.handle(parsed?).await?;
+                        parsed?.handle(self).await?;
                     } else {
                         return Err(anyhow::anyhow!("Client disconnected!"));
                     }
