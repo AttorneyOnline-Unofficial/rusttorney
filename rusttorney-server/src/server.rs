@@ -98,7 +98,7 @@ impl AO2MessageHandler {
     }
 
     async fn handle(
-        &'a mut self,
+        &mut self,
         command: ClientCommand,
     ) -> Result<(), anyhow::Error> {
         command.handle(self).await

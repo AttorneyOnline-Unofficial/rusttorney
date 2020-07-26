@@ -7,7 +7,7 @@ use std::{
 
 #[rustfmt::skip]
 #[derive(Debug, Command, PartialEq)]
-#[command(handler = "crate::server::AO2MessageHandler<'a>")]
+#[command(handler = "crate::server::AO2MessageHandler")]
 pub enum ClientCommand {
     #[command(code = "HI", handle = "handle_handshake")]
     Handshake(String),                           // HI#<hdid:String>#%
