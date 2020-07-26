@@ -1,4 +1,4 @@
-error: Variant ClientRequest::Ping does not have exactly one attribute in a form of `#[command(code = "CODE")]`
+error: No `code` parameter on ClientRequest::Ping
  --> $DIR/03-reject-no-code.rs:3:10
   |
 3 | #[derive(Command)]

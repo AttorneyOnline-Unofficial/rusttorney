@@ -1,11 +1,9 @@
 use proc_macro::TokenStream;
-// use proc_macro2::TokenStream as TokenStream2;
-use core::convert::TryFrom;
 use quote::{format_ident, quote};
 use syn::{parse_macro_input, Fields, ItemEnum, ItemStruct, Member, Variant};
 
 mod helpers;
-use helpers::{CommandMarker, ParseErr, VariantOpts};
+use helpers::{CommandMarker, VariantOpts};
 
 #[proc_macro_derive(Command, attributes(command))]
 pub fn command_derive(input: TokenStream) -> TokenStream {
@@ -17,6 +15,7 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
     let vars: Vec<_> = vars_punct.into_iter().collect();
     let mut var_idents = Vec::with_capacity(vars.len());
     let mut codes = Vec::with_capacity(vars.len());
+    let mut handles = Vec::with_capacity(vars.len());
     let mut patterns = Vec::with_capacity(vars.len());
     let mut named_fields = Vec::with_capacity(vars.len());
     let mut named_fields_to_str = Vec::with_capacity(vars.len());
@@ -39,29 +38,44 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
         {
             return str_as_compile_error("#[command(skip)] was hard-deprecated, sorry");
         }
-        let parse_codes: Vec<_> = metas
-            .into_iter()
-            .map(|meta| VariantOpts::try_from(&meta))
-            .collect();
-        if let Some(Err(ParseErr::Fatal(err))) = parse_codes
-            .iter()
-            .find(|res| matches!(res, Err(ParseErr::Fatal(_))))
-        {
-            return str_as_compile_error(err);
-        }
-        let mut codes_iter = parse_codes.into_iter().filter_map(|res| res.ok());
-        let code = match (codes_iter.next(), codes_iter.next()) {
-            (Some(var_code), None) => var_code.code,
-            _ => {
+        let var_opts_res = metas.into_iter().try_fold(VariantOpts::default(), |var_opts, meta| var_opts.parse_from_meta(&meta));
+        let (code, handle) = match var_opts_res {
+            Ok(VariantOpts { code: Some(code), handle: Some(handle) }) => (code, handle),
+            Ok(VariantOpts { code: None, .. }) =>
                 return str_as_compile_error(&format!(
-                    concat!(
-                        r#"Variant {}::{} does not have exactly one "#,
-                        r#"attribute in a form of `#[command(code = "CODE")]`"#
-                    ),
+                    "No `code` parameter on {}::{}",
                     enum_ident, ident
-                ))
-            }
+                )),
+            Ok(VariantOpts { handle: None, .. }) =>
+                return str_as_compile_error(&format!(
+                    "No `handle` parameter on {}::{}",
+                    enum_ident, ident
+                )),
+            Err(err) => return str_as_compile_error(&err)
         };
+        // let parse_codes: Vec<_> = metas
+        //     .into_iter()
+        //     .map(|meta| var_opts.parse_from_meta(&meta))
+        //     .collect();
+        // if let Some(Err(err)) = parse_codes
+        //     .iter()
+        //     .find(|res| matches!(res, Err(_)))
+        // {
+        //     return str_as_compile_error(err);
+        // }
+        // let mut codes_iter = parse_codes.into_iter().filter_map(|res| res.ok().flatten());
+        // let code = match (codes_iter.next(), codes_iter.next()) {
+        //     (Some(var_code), None) => var_code.code,
+        //     _ => {
+        //         return str_as_compile_error(&format!(
+        //             concat!(
+        //                 r#"Variant {}::{} does not have exactly one "#,
+        //                 r#"attribute in a form of `#[command(code = "CODE")]`"#
+        //             ),
+        //             enum_ident, ident
+        //         ))
+        //     }
+        // };
         let (
             named_fields_piece,
             named_fields_to_str_piece,
@@ -161,6 +175,7 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
         };
         var_idents.push(ident);
         codes.push(code);
+        handles.push(handle);
         named_fields.push(named_fields_piece);
         named_fields_to_str.push(named_fields_to_str_piece);
         read_fields.push(read_fields_piece);
@@ -169,10 +184,10 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
     }
     (quote! {
     impl #enum_ident {
-        async fn handle<'a>(self, handler: /*AO2MessageHandler<'a>*/()) -> Result<(), ::anyhow::Error> {
+        async fn handle<'a>(self, handler: &'a mut AO2MessageHandler<'a>) -> Result<(), ::anyhow::Error> {
             match self {
                 #(
-                    #enum_ident::#patterns => Ok(()),
+                    #enum_ident::#patterns => handler.#handles(#(#named_fields,)*).await,
                 )*
             }
         }
