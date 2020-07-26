@@ -17,10 +17,12 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
     let handler_opt_res = attrs
         .into_iter()
         .filter_map(|attr| attr.parse_meta().ok())
-        .try_fold(HandlerOpt::default(), |handler_opt, meta| handler_opt.parse_from_meta(&meta));
+        .try_fold(HandlerOpt::default(), |handler_opt, meta| {
+            handler_opt.parse_from_meta(&meta)
+        });
     let handler_opt = match handler_opt_res {
         Ok(HandlerOpt { handler }) => handler,
-        Err(err) => return str_as_compile_error(&err)
+        Err(err) => return str_as_compile_error(&err),
     };
 
     let vars: Vec<_> = vars_punct.into_iter().collect();
@@ -49,30 +51,41 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
         {
             return str_as_compile_error("#[command(skip)] was hard-deprecated, sorry");
         }
-        let var_opts_res = metas.into_iter().try_fold(VariantOpts::default(), |var_opts, meta| var_opts.parse_from_meta(&meta));
+        let var_opts_res = metas
+            .into_iter()
+            .try_fold(VariantOpts::default(), |var_opts, meta| {
+                var_opts.parse_from_meta(&meta)
+            });
         let (code, handle) = match var_opts_res {
-            Ok(VariantOpts { code: None, .. }) =>
+            Ok(VariantOpts { code: None, .. }) => {
                 return str_as_compile_error(&format!(
                     "No `code` parameter on {}::{}",
                     enum_ident, ident
-                )),
-            Ok(VariantOpts { handle: None, .. }) if handler_opt.is_some() =>
+                ))
+            }
+            Ok(VariantOpts { handle: None, .. }) if handler_opt.is_some() => {
                 return str_as_compile_error(&format!(
                     "No `handle` parameter on {}::{}",
                     enum_ident, ident
-                )),
-            Ok(VariantOpts { code: Some(code), handle }) => (code, handle),
-            Err(err) => return str_as_compile_error(&err)
+                ))
+            }
+            Ok(VariantOpts {
+                code: Some(code),
+                handle,
+            }) => (code, handle),
+            Err(err) => return str_as_compile_error(&err),
         };
         let (
             named_fields_piece,
             named_fields_to_str_piece,
             read_fields_piece,
             idx_fields_piece,
-            pattern
+            pattern,
         ) = match fields {
             Fields::Named(named) => {
-                let named_iter: Vec<_> = named.named.into_iter()
+                let named_iter: Vec<_> = named
+                    .named
+                    .into_iter()
                     .map(|field| {
                         (
                             field.ident.expect("Variant is guaranteed to be named"),
@@ -84,7 +97,8 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
                         )
                     })
                     .collect();
-                let named_fields_piece: Vec<_> = named_iter.iter().map(|(ident, _)| ident.clone()).collect();
+                let named_fields_piece: Vec<_> =
+                    named_iter.iter().map(|(ident, _)| ident.clone()).collect();
                 let idx_fields_piece: Vec<_> = named_iter
                     .iter()
                     .cloned()
@@ -158,12 +172,14 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
                 Vec::new(),
                 Vec::new(),
                 Vec::new(),
-                quote! { #ident }
+                quote! { #ident },
             ),
         };
         var_idents.push(ident);
         codes.push(code);
-        handle.map(|handle| handles.push(handle));
+        if let Some(handle) = handle {
+            handles.push(handle)
+        }
         named_fields.push(named_fields_piece);
         named_fields_to_str.push(named_fields_to_str_piece);
         read_fields.push(read_fields_piece);

@@ -1,10 +1,7 @@
 pub struct AO2MessageHandler<'a>(std::marker::PhantomData<&'a ()>);
 
 impl<'a> AO2MessageHandler<'a> {
-    pub async fn handle_handshake(
-        &mut self,
-        _hdid: String,
-    ) -> Result<(), anyhow::Error> {
+    pub async fn handle_handshake(&mut self, _hdid: String) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 
@@ -12,7 +9,7 @@ impl<'a> AO2MessageHandler<'a> {
         &mut self,
         _id: u32,
         _name: String,
-        _surname: String
+        _surname: String,
     ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
@@ -21,7 +18,11 @@ impl<'a> AO2MessageHandler<'a> {
         unimplemented!()
     }
 
-    pub async fn handle_edit_evidence(&mut self, _id: u32, _nested: super::EvidenceArgs) -> Result<(), anyhow::Error> {
+    pub async fn handle_edit_evidence(
+        &mut self,
+        _id: u32,
+        _nested: super::EvidenceArgs,
+    ) -> Result<(), anyhow::Error> {
         unimplemented!()
     }
 }

@@ -1,4 +1,4 @@
-use syn::{Ident, Meta, MetaList, NestedMeta, Lit, parse_str, Path, parse::Parse};
+use syn::{parse::Parse, parse_str, Ident, Lit, Meta, MetaList, NestedMeta, Path};
 
 type ParseRes<T> = Result<Option<T>, String>;
 
@@ -9,10 +9,10 @@ struct ParseAssign<'a>(&'a str);
 impl<'a> ParseAssign<'a> {
     /// Returns ParseErr::Ignore on `#key` mismatch
     /// and Parse::Fatal if "value" is not syn::LitStr
-    fn parse_str<'b>(self, value: &NestedMeta) -> ParseRes<String> {
+    fn parse_str(self, value: &NestedMeta) -> ParseRes<String> {
         let name_val = match value {
             NestedMeta::Meta(Meta::NameValue(name_val)) => name_val,
-            _ => return Ok(None)
+            _ => return Ok(None),
         };
         if !name_val.path.is_ident(self.0) {
             return Ok(None);
@@ -22,7 +22,7 @@ impl<'a> ParseAssign<'a> {
             other => Err(format!(
                 "Expected string literal in `key = value` assignment, found {:?}",
                 other
-            ))
+            )),
         }
     }
     /// Returns Ok(None) on `#key` mismatch
@@ -37,7 +37,7 @@ impl<'a> ParseAssign<'a> {
 #[derive(Default)]
 pub(crate) struct VariantOpts {
     pub code: Option<String>,
-    pub handle: Option<Ident>
+    pub handle: Option<Ident>,
 }
 
 impl VariantOpts {
@@ -46,11 +46,7 @@ impl VariantOpts {
             Meta::List(meta_list) => meta_list,
             _ => return Ok(self),
         };
-        let MetaList {
-            path,
-            nested,
-            ..
-        } = meta_list;
+        let MetaList { path, nested, .. } = meta_list;
         if !path.is_ident("command") {
             return Ok(self);
         }
@@ -61,19 +57,22 @@ impl VariantOpts {
             let handle_opt = ParseAssign("handle").parse_arg(nested)?;
 
             match (handle_opt, code_opt, status) {
-                (handle @ Some(_), code @ Some(_), VariantOpts { handle: None, code: None }) => {
-                    Ok(VariantOpts { handle, code })
-                },
+                (
+                    handle @ Some(_),
+                    code @ Some(_),
+                    VariantOpts {
+                        handle: None,
+                        code: None,
+                    },
+                ) => Ok(VariantOpts { handle, code }),
                 (handle @ Some(_), None, VariantOpts { handle: None, code }) => {
                     Ok(VariantOpts { handle, code })
-                },
+                }
                 (None, code @ Some(_), VariantOpts { handle, code: None }) => {
                     Ok(VariantOpts { handle, code })
-                },
-                (None, None, VariantOpts { handle, code }) => {
-                    Ok(VariantOpts { handle, code })
-                },
-                _ => Err("Keys in `#[command(...)]` can't be repeated".into())
+                }
+                (None, None, VariantOpts { handle, code }) => Ok(VariantOpts { handle, code }),
+                _ => Err("Keys in `#[command(...)]` can't be repeated".into()),
             }
         })
     }
@@ -81,7 +80,7 @@ impl VariantOpts {
 
 #[derive(Default)]
 pub(crate) struct HandlerOpt {
-    pub handler: Option<Path>
+    pub handler: Option<Path>,
 }
 
 impl HandlerOpt {
@@ -90,11 +89,7 @@ impl HandlerOpt {
             Meta::List(meta_list) => meta_list,
             _ => return Ok(self),
         };
-        let MetaList {
-            path,
-            nested,
-            ..
-        } = meta_list;
+        let MetaList { path, nested, .. } = meta_list;
         if !path.is_ident("command") {
             return Ok(self);
         }
@@ -106,7 +101,7 @@ impl HandlerOpt {
             match (handler_opt, status) {
                 (handler, HandlerOpt { handler: None }) => Ok(HandlerOpt { handler }),
                 (None, HandlerOpt { handler }) => Ok(HandlerOpt { handler }),
-                _ => Err("`handler` specified multiply times".into())
+                _ => Err("`handler` specified multiply times".into()),
             }
         })
     }
