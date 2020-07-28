@@ -6,6 +6,7 @@ use std::io::{stdin, BufRead, Read};
 pub mod client_manager;
 pub mod command;
 pub mod config;
+pub mod handlers;
 pub mod master_server_client;
 pub mod networking;
 pub mod server;
