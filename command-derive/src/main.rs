@@ -1,18 +1,31 @@
+#![allow(dead_code)]
+
+mod ao_message_handler;
+use ao_message_handler::AO2MessageHandler;
+
 use command_derive::*;
 
 #[derive(Debug, Command, PartialEq)]
-enum ClientRequest {
-    /// Sent to server in the very begin
-    #[command(code = "HI")]
-    Handshake { hdid: String },
-    #[command(code = "HEY")]
-    Handshake2(String),
-    /// Sent as answer to server's "Ping"
-    #[command(code = "PONG")]
-    Pong,
+#[command(handler = "AO2MessageHandler<'a>")]
+pub enum ClientCommand {
+    #[command(code = "HI", handle = "handle_handshake")]
+    Handshake(String),
+
+    #[command(code = "ID", handle = "handle_client_version")]
+    ClientVersion(u32, String, String),
+
+    #[command(code = "CH", handle = "handle_keepalive")]
+    KeepAlive(i32),
+
+    #[command(code = "EE", handle = "handle_edit_evidence")]
+    EditEvidence(u32, #[command(flatten)] EvidenceArgs),
 }
 
-#[derive(Debug, WithStrIter, PartialEq)]
-struct Nested(i32, i32);
+#[derive(Debug, PartialEq, WithStrIter)]
+pub struct EvidenceArgs {
+    pub name: String,
+    pub description: String,
+    pub image: String,
+}
 
 fn main() {}

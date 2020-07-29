@@ -7,5 +7,6 @@ fn tests() {
     t.compile_fail("tests/04-fromstriter-reject-enum.rs");
     t.pass("tests/05-accept-fromstriter-both-named-and-unnamed.rs");
     t.compile_fail("tests/06-reject-wrong-code-lit.rs");
-    t.pass("tests/07-flatten.rs");
+    t.compile_fail("tests/07-reject-double-key.rs");
+    t.pass("tests/08-accept-no-handler.rs");
 }

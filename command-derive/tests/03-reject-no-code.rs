@@ -2,7 +2,7 @@ use command_derive::*;
 
 #[derive(Command)]
 enum ClientRequest {
-    #[command(code = "HI")]
+    #[command(code = "HI", handle = "handle_handshake")]
     Handshake {
         hdid: String
     },

@@ -1,23 +1,17 @@
-#![allow(dead_code)]
-
-mod ao_message_handler;
-use ao_message_handler::AO2MessageHandler;
-
 use command_derive::*;
 
 #[derive(Debug, Command, PartialEq)]
-#[command(handler = "AO2MessageHandler<'a>")]
 pub enum ClientCommand {
-    #[command(code = "HI", handle = "handle_handshake")]
+    #[command(code = "HI")]
     Handshake(String),
 
-    #[command(code = "ID", handle = "handle_client_version")]
+    #[command(code = "ID")]
     ClientVersion(u32, String, String),
 
-    #[command(code = "CH", handle = "handle_keepalive")]
+    #[command(code = "CH")]
     KeepAlive(i32),
 
-    #[command(code = "EE", handle = "handle_edit_evidence")]
+    #[command(code = "EE")]
     EditEvidence(u32, #[command(flatten)] EvidenceArgs),
 }
 

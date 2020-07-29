@@ -1,4 +1,6 @@
-use crate::command::{ClientCommand, ServerCommand};
+use crate::command::{
+    CasePreferences, ClientCommand, EvidenceArgs, ServerCommand,
+};
 use crate::config::Config;
 
 use crate::client_manager::{Client, ClientManager};
@@ -29,14 +31,14 @@ pub struct AOServer {
 }
 
 pub struct AO2MessageHandler {
-    socket: Framed<TcpStream, AOMessageCodec>,
-    db: DbWrapper,
-    client_manager: Arc<Mutex<ClientManager>>,
-    ch_tx: mpsc::Sender<()>,
-    client: Client,
-    software: String,
-    version: String,
-    config: Arc<Config>,
+    pub(crate) socket: Framed<TcpStream, AOMessageCodec>,
+    pub(crate) db: DbWrapper,
+    pub(crate) client_manager: Arc<Mutex<ClientManager>>,
+    pub(crate) ch_tx: mpsc::Sender<()>,
+    pub(crate) client: Client,
+    pub(crate) software: String,
+    pub(crate) version: String,
+    pub(crate) config: Arc<Config>,
 }
 
 impl AO2MessageHandler {
@@ -95,43 +97,7 @@ impl AO2MessageHandler {
         })
     }
 
-    async fn handle(
-        &mut self,
-        command: ClientCommand,
-    ) -> Result<(), anyhow::Error> {
-        match command {
-            ClientCommand::Handshake(hdid) => self.handle_handshake(hdid).await,
-            ClientCommand::KeepAlive(_) => self.handle_keepalive().await,
-            _ => Ok(()),
-        }
-    }
-
-    async fn handle_handshake(
-        &mut self,
-        hdid: String,
-    ) -> Result<(), anyhow::Error> {
-        self.client.hdid = hdid.clone();
-        self.client_manager.lock().await.update_client(self.client.clone());
-
-        self.db.add_hdid(hdid, self.client.ipid).await?;
-
-        self.socket
-            .send(ServerCommand::ServerVersion(
-                self.client.id,
-                self.software.clone(),
-                self.version.clone(),
-            ))
-            .await?;
-
-        self.socket
-            .send(ServerCommand::PlayerCount(
-                self.player_count().await,
-                self.config.general.playerlimit,
-            ))
-            .await
-    }
-
-    async fn player_count(&self) -> u8 {
+    pub(crate) async fn player_count(&self) -> u8 {
         self.client_manager
             .lock()
             .await
@@ -141,13 +107,8 @@ impl AO2MessageHandler {
             .count() as u8
     }
 
-    async fn handle_keepalive(&mut self) -> Result<(), anyhow::Error> {
-        self.ch_tx.send(()).await?;
-        self.socket.send(ServerCommand::KeepAlive).await
-    }
-
     async fn start_handling(
-        mut self,
+        &mut self,
         mut timeout_rx: Receiver<()>,
     ) -> Result<(), anyhow::Error> {
         // main client connection loop
@@ -159,7 +120,7 @@ impl AO2MessageHandler {
                 }
                 res = self.socket.next() => {
                     if let Some(parsed) = res {
-                        self.handle(parsed?).await?;
+                        parsed?.handle(self).await?;
                     } else {
                         return Err(anyhow::anyhow!("Client disconnected!"));
                     }

@@ -1,5 +1,5 @@
-error: Expected string literal in `key = value` assignment, found Int(LitInt { token: 123 })
- --> $DIR/06-reject-wrong-code-lit.rs:3:10
+error: Keys in `#[command(...)]` can't be repeated
+ --> $DIR/07-reject-double-key.rs:3:10
   |
 3 | #[derive(Command)]
   |          ^^^^^^^
