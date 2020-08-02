@@ -1,4 +1,4 @@
-error: Expected string literal in `key = value` assignment, found Int(LitInt { token: 123 })
+error: Expected string literal in `key = value` assignment
  --> $DIR/06-reject-wrong-code-lit.rs:5:22
   |
 5 |     #[command(code = 123)]

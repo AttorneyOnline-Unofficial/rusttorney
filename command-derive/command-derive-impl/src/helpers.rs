@@ -18,10 +18,7 @@ impl<'a> ParseAssign<'a> {
         }
         match &name_val.lit {
             Lit::Str(lit) => Ok(Some((lit.value(), lit.span()))),
-            other => Err((format!(
-                "Expected string literal in `key = value` assignment, found {:?}",
-                other
-            ), other.span())),
+            other => Err(("Expected string literal in `key = value` assignment".into(), other.span())),
         }
     }
     /// Returns Ok(None) on `#key` mismatch
