@@ -1,6 +1,5 @@
-use syn::{parse::Parse, parse_str, Ident, Lit, Meta, MetaList, NestedMeta, Path};
-
-type ParseRes<T> = Result<Option<T>, String>;
+use proc_macro2::Span;
+use syn::{parse::Parse, spanned::Spanned, parse_str, Ident, Lit, Meta, MetaList, NestedMeta, Path};
 
 /// Parses this: `#key = "<val>"`
 #[derive(Clone, Copy)]
@@ -9,7 +8,7 @@ struct ParseAssign<'a>(&'a str);
 impl<'a> ParseAssign<'a> {
     /// Returns ParseErr::Ignore on `#key` mismatch
     /// and Parse::Fatal if "value" is not syn::LitStr
-    fn parse_str(self, value: &NestedMeta) -> ParseRes<String> {
+    fn parse_str(self, value: &NestedMeta) -> Result<Option<(String, Span)>, (String, Span)> {
         let name_val = match value {
             NestedMeta::Meta(Meta::NameValue(name_val)) => name_val,
             _ => return Ok(None),
@@ -18,18 +17,18 @@ impl<'a> ParseAssign<'a> {
             return Ok(None);
         }
         match &name_val.lit {
-            Lit::Str(s) => Ok(Some(s.value())),
-            other => Err(format!(
+            Lit::Str(lit) => Ok(Some((lit.value(), lit.span()))),
+            other => Err((format!(
                 "Expected string literal in `key = value` assignment, found {:?}",
                 other
-            )),
+            ), other.span())),
         }
     }
     /// Returns Ok(None) on `#key` mismatch
     /// and Err(_) if parsing of `R` fails
-    fn parse_arg<T: Parse>(self, value: &NestedMeta) -> ParseRes<T> {
+    fn parse_arg<T: Parse>(self, value: &NestedMeta) -> Result<Option<T>, (String, Span)> {
         self.parse_str(value)?
-            .map(|s| parse_str(&s).map_err(|err| err.to_string()))
+            .map(|(lit, span)| parse_str(&lit).map_err(move |err| (err.to_string(), span)))
             .transpose()
     }
 }
@@ -41,7 +40,7 @@ pub(crate) struct VariantOpts {
 }
 
 impl VariantOpts {
-    pub(crate) fn parse_from_meta(self, value: &Meta) -> Result<Self, String> {
+    pub(crate) fn parse_from_meta(self, value: &Meta) -> Result<Self, (String, Span)> {
         let meta_list = match value {
             Meta::List(meta_list) => meta_list,
             _ => return Ok(self),
@@ -52,7 +51,7 @@ impl VariantOpts {
         }
         let mut nested_it = nested.iter();
 
-        nested_it.try_fold(self, |status, nested| -> Result<VariantOpts, String> {
+        nested_it.try_fold(self, |status, nested| /*-> Result<VariantOpts, String>*/ {
             let code_opt = ParseAssign("code").parse_str(nested)?;
             let handle_opt = ParseAssign("handle").parse_arg(nested)?;
 
@@ -64,15 +63,15 @@ impl VariantOpts {
                         handle: None,
                         code: None,
                     },
-                ) => Ok(VariantOpts { handle, code }),
+                ) => Ok(VariantOpts { handle, code: code.map(|(code, _)| code) }),
                 (handle @ Some(_), None, VariantOpts { handle: None, code }) => {
                     Ok(VariantOpts { handle, code })
                 }
                 (None, code @ Some(_), VariantOpts { handle, code: None }) => {
-                    Ok(VariantOpts { handle, code })
+                    Ok(VariantOpts { handle, code: code.map(|(code, _)| code) })
                 }
                 (None, None, VariantOpts { handle, code }) => Ok(VariantOpts { handle, code }),
-                _ => Err("Keys in `#[command(...)]` can't be repeated".into()),
+                _ => Err(("Keys in `#[command(...)]` can't be repeated".into(), nested.span())),
             }
         })
     }
@@ -84,7 +83,7 @@ pub(crate) struct HandlerOpt {
 }
 
 impl HandlerOpt {
-    pub(crate) fn parse_from_meta(self, value: &Meta) -> Result<Self, String> {
+    pub(crate) fn parse_from_meta(self, value: &Meta) -> Result<Self, (String, proc_macro2::Span)> {
         let meta_list = match value {
             Meta::List(meta_list) => meta_list,
             _ => return Ok(self),
@@ -95,13 +94,13 @@ impl HandlerOpt {
         }
         let mut nested_it = nested.iter();
 
-        nested_it.try_fold(self, |status, nested| -> Result<HandlerOpt, String> {
+        nested_it.try_fold(self, |status, nested| /*-> Result<HandlerOpt, String>*/ {
             let handler_opt = ParseAssign("handler").parse_arg(nested)?;
 
             match (handler_opt, status) {
                 (handler, HandlerOpt { handler: None }) => Ok(HandlerOpt { handler }),
                 (None, HandlerOpt { handler }) => Ok(HandlerOpt { handler }),
-                _ => Err("`handler` specified multiply times".into()),
+                (Some(handler), _) => Err(("`handler` specified multiply times".into(), handler.span())),
             }
         })
     }

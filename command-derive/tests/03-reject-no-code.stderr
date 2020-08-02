@@ -1,7 +1,5 @@
 error: No `code` parameter on ClientRequest::Ping
- --> $DIR/03-reject-no-code.rs:3:10
+ --> $DIR/03-reject-no-code.rs:9:5
   |
-3 | #[derive(Command)]
-  |          ^^^^^^^
-  |
-  = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+9 |     Ping
+  |     ^^^^
