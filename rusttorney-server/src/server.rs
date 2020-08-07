@@ -11,6 +11,7 @@ use futures::{SinkExt, StreamExt};
 use std::sync::Arc;
 use tokio::net::{TcpListener, TcpStream};
 
+use crate::music_list::MusicList;
 use crate::prompt;
 use futures::channel::mpsc;
 use futures::channel::oneshot::{channel, Receiver, Sender};
@@ -26,6 +27,7 @@ use tokio_util::codec::{Decoder, Framed};
 
 pub struct AOServer {
     config: Arc<Config>,
+    music_list: Arc<MusicList>,
     db: DbWrapper,
     client_manager: Arc<Mutex<ClientManager>>,
 }
@@ -46,12 +48,12 @@ impl AO2MessageHandler {
         mut socket: Framed<TcpStream, AOMessageCodec>,
         db: DbWrapper,
         client_manager: Arc<Mutex<ClientManager>>,
-        timeout: u64,
         timeout_tx: Sender<()>,
         ip: IpAddr,
         config: Arc<Config>,
     ) -> Result<Self, anyhow::Error> {
         let (ch_tx, mut ch_rx) = futures::channel::mpsc::channel(1);
+        let timeout = config.timeout as u64;
 
         tokio::spawn(async move {
             let mut delay =
@@ -133,6 +135,9 @@ impl AO2MessageHandler {
 impl AOServer {
     pub fn new(config: Arc<Config>, db: DbWrapper) -> anyhow::Result<Self> {
         let playerlimit = config.general.playerlimit;
+        let music_list_str = std::fs::read_to_string("./config/music.toml")?;
+        let music_list: Arc<MusicList> =
+            Arc::new(toml::from_str(&music_list_str)?);
         Ok(Self {
             config,
             db: db.clone(),
@@ -140,6 +145,7 @@ impl AOServer {
                 playerlimit,
                 db,
             ))),
+            music_list,
         })
     }
 
@@ -231,7 +237,6 @@ impl AOServer {
                     framed,
                     db,
                     client_manager,
-                    timeout,
                     timeout_tx,
                     c.ip(),
                     config,
