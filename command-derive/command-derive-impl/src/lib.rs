@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
-use quote::{format_ident, quote};
-use syn::{parse_macro_input, Fields, ItemEnum, ItemStruct, Member, Variant};
+use quote::{format_ident, quote, quote_spanned};
+use syn::{parse_macro_input, spanned::Spanned, Fields, ItemEnum, ItemStruct, Member, Variant};
 
 mod helpers;
 use helpers::{CommandMarker, HandlerOpt, VariantOpts};
@@ -22,7 +22,7 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
         });
     let handler_opt = match handler_opt_res {
         Ok(HandlerOpt { handler }) => handler,
-        Err(err) => return str_as_compile_error(&err),
+        Err((err, span)) => return str_as_compile_error(&err, span),
     };
 
     let vars: Vec<_> = vars_punct.into_iter().collect();
@@ -35,6 +35,7 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
     let mut idx_fields = Vec::with_capacity(vars.len());
     let mut read_fields = Vec::with_capacity(vars.len());
     for var in vars {
+        let var_span = var.span();
         let Variant {
             attrs,
             ident,
@@ -45,11 +46,14 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
             .into_iter()
             .filter_map(|attr| attr.parse_meta().ok())
             .collect();
-        if metas
+        if let Some(meta) = metas
             .iter()
-            .any(|meta| CommandMarker("skip").validate(meta).is_ok())
+            .find(|meta| CommandMarker("skip").validate(meta).is_ok())
         {
-            return str_as_compile_error("#[command(skip)] was hard-deprecated, sorry");
+            return str_as_compile_error(
+                "#[command(skip)] was hard-deprecated, sorry",
+                meta.span(),
+            );
         }
         let var_opts_res = metas
             .into_iter()
@@ -58,22 +62,22 @@ pub fn command_derive(input: TokenStream) -> TokenStream {
             });
         let (code, handle) = match var_opts_res {
             Ok(VariantOpts { code: None, .. }) => {
-                return str_as_compile_error(&format!(
-                    "No `code` parameter on {}::{}",
-                    enum_ident, ident
-                ))
+                return str_as_compile_error(
+                    &format!("No `code` parameter on {}::{}", enum_ident, ident),
+                    var_span,
+                )
             }
             Ok(VariantOpts { handle: None, .. }) if handler_opt.is_some() => {
-                return str_as_compile_error(&format!(
-                    "No `handle` parameter on {}::{}",
-                    enum_ident, ident
-                ))
+                return str_as_compile_error(
+                    &format!("No `handle` parameter on {}::{}", enum_ident, ident),
+                    var_span,
+                )
             }
             Ok(VariantOpts {
                 code: Some(code),
                 handle,
             }) => (code, handle),
-            Err(err) => return str_as_compile_error(&err),
+            Err((err, span)) => return str_as_compile_error(&err, span),
         };
         let (
             named_fields_piece,
@@ -306,9 +310,9 @@ pub fn with_str_iter_derive(input: TokenStream) -> TokenStream {
     .into()
 }
 
-fn str_as_compile_error(s: &str) -> TokenStream {
+fn str_as_compile_error(err: &str, span: proc_macro2::Span) -> TokenStream {
     {
-        quote! { compile_error!(#s); }
+        quote_spanned! {span=> compile_error!(#err); }
     }
     .into()
 }

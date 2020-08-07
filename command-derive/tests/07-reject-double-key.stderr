@@ -1,7 +1,5 @@
 error: Keys in `#[command(...)]` can't be repeated
- --> $DIR/07-reject-double-key.rs:3:10
+ --> $DIR/07-reject-double-key.rs:6:15
   |
-3 | #[derive(Command)]
-  |          ^^^^^^^
-  |
-  = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+6 |     #[command(code = "HI")]
+  |               ^^^^^^^^^^^
