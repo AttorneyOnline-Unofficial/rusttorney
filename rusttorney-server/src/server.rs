@@ -41,19 +41,18 @@ impl AO2MessageHandler {
         let (ch_tx, mut ch_rx) = futures::channel::mpsc::channel(1);
 
         tokio::spawn(async move {
-            let mut delay =
-                tokio::time::delay_for(Duration::from_millis(timeout));
+            let mut delay = tokio::time::sleep(Duration::from_millis(timeout));
 
             loop {
                 select! {
-                    _ = &mut delay => {
+                    _ = delay => {
                         log::debug!("Timeout!");
                         timeout_tx.send(());
                         break;
                     }
                     _ = ch_rx.next() => {
                         log::debug!("Restarting delay...");
-                        delay = tokio::time::delay_for(Duration::from_millis(timeout));
+                        delay = tokio::time::sleep(Duration::from_millis(timeout));
                         log::debug!("{:?}", &delay);
                     }
                 }

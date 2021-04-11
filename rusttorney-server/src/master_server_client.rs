@@ -4,14 +4,13 @@ use crate::config::Config;
 use crate::networking::Command;
 use anyhow::Error;
 use futures::future::BoxFuture;
-use serde::export::PhantomData;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::pin::Pin;
 use std::task::Context;
 use tokio::io::{AsyncWrite, AsyncWriteExt, ReadHalf, WriteHalf};
 use tokio::macros::support::Poll;
 use tokio::net::TcpStream;
-use tokio::stream::{Stream, StreamExt};
+use futures::{Stream, StreamExt};
 
 #[derive(Debug)]
 pub enum MasterServerCommand {
